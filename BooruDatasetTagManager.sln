@@ -18,6 +18,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{18453517-E4B5-427F-9CD2-741DC490AE55}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bdtm.Core", "src\Bdtm.Core\Bdtm.Core.csproj", "{660F84E3-2149-47FB-BB4B-9BBFF48AAF9D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{8A37AB2A-4D19-4920-9E67-CDEDC5F9A672}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bdtm.Core.Tests", "tests\Bdtm.Core.Tests\Bdtm.Core.Tests.csproj", "{05B7A142-BFA9-4F6E-A86C-777E70F6137D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,11 +40,23 @@ Global
 		{B8BF6E4B-77F2-4D18-8509-C25D2E3D4118}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B8BF6E4B-77F2-4D18-8509-C25D2E3D4118}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B8BF6E4B-77F2-4D18-8509-C25D2E3D4118}.Release|Any CPU.Build.0 = Release|Any CPU
+		{660F84E3-2149-47FB-BB4B-9BBFF48AAF9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{660F84E3-2149-47FB-BB4B-9BBFF48AAF9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{660F84E3-2149-47FB-BB4B-9BBFF48AAF9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{660F84E3-2149-47FB-BB4B-9BBFF48AAF9D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05B7A142-BFA9-4F6E-A86C-777E70F6137D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05B7A142-BFA9-4F6E-A86C-777E70F6137D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05B7A142-BFA9-4F6E-A86C-777E70F6137D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05B7A142-BFA9-4F6E-A86C-777E70F6137D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1546C24B-0907-437E-8084-CA0D454C46EE}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{660F84E3-2149-47FB-BB4B-9BBFF48AAF9D} = {18453517-E4B5-427F-9CD2-741DC490AE55}
+		{05B7A142-BFA9-4F6E-A86C-777E70F6137D} = {8A37AB2A-4D19-4920-9E67-CDEDC5F9A672}
 	EndGlobalSection
 EndGlobal
