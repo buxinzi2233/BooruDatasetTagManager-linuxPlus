@@ -35,10 +35,13 @@ Latest status: `docs/porting/STATUS_2026-07-11_post_p52.md`
 
 ## Backlog (not done)
 
+- [x] P5.3 Character tag audit wizard
+
+
 - [x] Open GitHub PR (#1)
 - [x] LLM vision (current image)
 - [x] TAG2NL
-- [ ] Character tag audit wizard
+- [x] Character tag audit wizard
 - [x] Video tools UI (info + frame extract; convert API ready)
 - [ ] Crop / background removal
 - [x] PixAI ONNX
@@ -54,4 +57,4 @@ Latest status: `docs/porting/STATUS_2026-07-11_post_p52.md`
 ./scripts/run-linux.sh            # preferred (CUDA libs + user Models)
 ```
 
-Tests last green: **Core 62 + Onnx 9**.
+Tests last green: **Core 127 + Onnx 9**.
