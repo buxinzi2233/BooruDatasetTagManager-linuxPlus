@@ -28,6 +28,8 @@
         <MenuItem Header="ONNX 打标全部" Command="{Binding RunOnnxOnAllCommand}" />
         <MenuItem Header="取消批量" Command="{Binding CancelBatchCommand}" />
         <Separator />
+        <MenuItem Header="TAG2NL 整库 caption…" Command="{Binding RunTag2NlCommand}"
+                  ToolTip.Tip="标签→自然语言，输出到旁系 _captioned（也在「工具」菜单）" />
         <MenuItem Header="刷新 ONNX 状态" Command="{Binding RefreshOnnxStatusUiCommand}" />
       </MenuItem>
       <MenuItem Header="视图(_V)">

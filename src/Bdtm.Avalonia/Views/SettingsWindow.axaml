@@ -3,7 +3,7 @@
         xmlns:vm="using:Bdtm.Avalonia.ViewModels"
         x:Class="Bdtm.Avalonia.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
-        Width="560" Height="640"
+        Width="580" Height="720"
         MinWidth="480" MinHeight="520"
         Title="设置"
         WindowStartupLocation="CenterOwner"
@@ -15,7 +15,7 @@
       <Button Content="关闭" Click="Close_Click" MinWidth="88" />
     </StackPanel>
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
       <StackPanel Spacing="10">
         <TextBlock FontWeight="SemiBold" FontSize="15" Text="常规" />
         <TextBlock Opacity="0.7" Text="{Binding ConfigPathDisplay, StringFormat=配置文件: {0}}" TextWrapping="Wrap" FontSize="11" />
@@ -65,7 +65,7 @@
         <Separator />
         <TextBlock FontWeight="SemiBold" FontSize="15" Text="LLM 视觉打标（OpenAI 兼容）" />
         <TextBlock Opacity="0.7" FontSize="11" TextWrapping="Wrap"
-                   Text="Endpoint 通常形如 https://api.openai.com/v1 或兼容网关的 /v1 根路径。" />
+                   Text="Endpoint 通常形如 https://api.openai.com/v1 或兼容网关的 /v1 根路径。向下滚动可配置 TAG2NL 并行数与提示词。" />
         <TextBlock Opacity="0.8" Text="Endpoint" />
         <TextBox Text="{Binding LlmEndpoint}" />
         <TextBlock Opacity="0.8" Text="API Key" />
@@ -74,18 +74,19 @@
         <TextBox Text="{Binding LlmVisionModel}" />
         <TextBlock Opacity="0.8" Text="超时（秒）" />
         <NumericUpDown Minimum="10" Maximum="3600" Increment="10" Value="{Binding LlmTimeoutSeconds}" />
-        <TextBlock Opacity="0.8" Text="System Prompt" />
+        <TextBlock Opacity="0.8" Text="System Prompt（视觉打标）" />
         <TextBox Text="{Binding LlmSystemPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" />
-        <TextBlock Opacity="0.8" Text="User Prompt" />
+        <TextBlock Opacity="0.8" Text="User Prompt（视觉打标）" />
         <TextBox Text="{Binding LlmUserPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
 
-        <TextBlock FontWeight="SemiBold" FontSize="15" Text="TAG2NL" Margin="0,16,0,0" />
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="TAG2NL（标签→自然语言）" />
         <TextBlock Opacity="0.75" TextWrapping="Wrap"
-                   Text="连接与 Vision 模型同上；下列仅影响标签→自然语言批量生成。" />
-        <TextBlock Opacity="0.8" Text="TAG2NL 系统提示词" />
-        <TextBox Text="{Binding LlmTag2NlSystemPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
+                   Text="连接与 Vision 模型同上；下列仅影响「工具 → TAG2NL…」整库批量。并行数在提示词上方。" />
         <TextBlock Opacity="0.8" Text="TAG2NL 并行数 (1–100)" />
         <NumericUpDown Minimum="1" Maximum="100" Increment="1" Value="{Binding LlmTag2NlConcurrency}" />
+        <TextBlock Opacity="0.8" Text="TAG2NL 系统提示词" />
+        <TextBox Text="{Binding LlmTag2NlSystemPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
       </StackPanel>
     </ScrollViewer>
   </DockPanel>
