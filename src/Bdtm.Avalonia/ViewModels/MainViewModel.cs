@@ -32,7 +32,8 @@ public partial class MainViewModel : ViewModelBase
     public MainViewModel()
     {
         _appDir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        _settings = AppSettings.Load(_appDir);
+        AppPaths.EnsureCreated();
+        _settings = AppSettings.LoadUserSettings();
         Images = new ObservableCollection<ImageListItem>();
         CurrentTags = new ObservableCollection<TagRow>();
         GlobalTags = new ObservableCollection<TagCountRow>();
@@ -48,7 +49,7 @@ public partial class MainViewModel : ViewModelBase
         LoadChineseLookup();
         _modelsRoot = ResolveModelsRoot();
         RefreshOnnxStatus(prefix: "启动");
-        StatusText = $"模型目录: {_modelsRoot} · 中文词表: {_zhLookup.Count}";
+        StatusText = $"配置: {AppPaths.SettingsFilePath} · Models: {_modelsRoot} · 中文词表: {_zhLookup.Count}";
     }
 
     public ObservableCollection<ImageListItem> Images { get; }
@@ -326,7 +327,7 @@ public partial class MainViewModel : ViewModelBase
             _tagger = null;
         }
         RefreshOnnxStatus(prefix: "刷新");
-        StatusText = $"模型目录: {_modelsRoot} · 中文词表: {_zhLookup.Count}";
+        StatusText = $"Models: {_modelsRoot} · 配置: {AppPaths.SettingsFilePath} · 中文词表: {_zhLookup.Count}";
     }
 
     [RelayCommand]
@@ -477,56 +478,81 @@ public partial class MainViewModel : ViewModelBase
     private string ResolveModelsRoot()
     {
         string? env = Environment.GetEnvironmentVariable("BDTM_MODELS_DIR");
-        if (!string.IsNullOrWhiteSpace(env) && Directory.Exists(env))
+        if (!string.IsNullOrWhiteSpace(env))
+        {
+            Directory.CreateDirectory(env);
             return Path.GetFullPath(env);
+        }
 
         if (!string.IsNullOrWhiteSpace(_settings.ModelsPath))
         {
             string configured = _settings.ModelsPath;
             if (!Path.IsPathRooted(configured))
                 configured = Path.GetFullPath(Path.Combine(_appDir, configured));
-            if (Directory.Exists(configured))
-                return configured;
+            Directory.CreateDirectory(configured);
+            return configured;
         }
 
+        string userModels = AppPaths.DefaultModelsDir;
+        Directory.CreateDirectory(userModels);
+        if (IsRepoPresent(userModels, OnnxModelRepo))
+            return userModels;
+
         string besideApp = Path.Combine(_appDir, "Models");
-        if (IsRepoPresent(besideApp, OnnxModelRepo) || Directory.Exists(besideApp))
+        if (IsRepoPresent(besideApp, OnnxModelRepo))
             return besideApp;
 
+        // Auto-link known local caches into user models for convenience.
         string[] candidates =
         {
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "Projects/toolbox/datasets/Tool/sd-image-sorter/data/models/wd14-tagger"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "Projects/toolbox/model-train/AnimaLoraStudio/models/wd14"),
+            besideApp,
         };
 
         foreach (string c in candidates)
         {
             if (!Directory.Exists(c)) continue;
             if (IsRepoPresent(c, OnnxModelRepo))
-                return c;
-
-            string flat = Path.Combine(c, OnnxModelRepo.Split('/').Last());
-            if (File.Exists(Path.Combine(flat, "model.onnx")) && File.Exists(Path.Combine(flat, "selected_tags.csv")))
             {
-                TryLinkFlatModelInto(besideApp, OnnxModelRepo, flat);
-                if (IsRepoPresent(besideApp, OnnxModelRepo))
-                    return besideApp;
+                // If this is already userModels-compatible tree, use it; else link into userModels.
+                if (string.Equals(Path.GetFullPath(c), Path.GetFullPath(userModels), StringComparison.Ordinal))
+                    return userModels;
+                string flat = Path.Combine(c, OnnxModelRepo.Split('/').Last());
+                string under = Path.Combine(c, OnnxModelRepo.Replace('/', '_'));
+                if (IsRepoPresent(c, OnnxModelRepo))
+                {
+                    // c itself may be Models root with org/repo
+                    return c;
+                }
+                if (Directory.Exists(flat))
+                    TryLinkFlatModelInto(userModels, OnnxModelRepo, flat);
+                else if (Directory.Exists(under))
+                    TryLinkFlatModelInto(userModels, OnnxModelRepo, under);
+                if (IsRepoPresent(userModels, OnnxModelRepo))
+                    return userModels;
             }
 
-            string underscored = OnnxModelRepo.Replace('/', '_');
-            string underPath = Path.Combine(c, underscored);
-            if (File.Exists(Path.Combine(underPath, "model.onnx")))
+            string flat2 = Path.Combine(c, OnnxModelRepo.Split('/').Last());
+            if (File.Exists(Path.Combine(flat2, "model.onnx")))
             {
-                TryLinkFlatModelInto(besideApp, OnnxModelRepo, underPath);
-                if (IsRepoPresent(besideApp, OnnxModelRepo))
-                    return besideApp;
+                TryLinkFlatModelInto(userModels, OnnxModelRepo, flat2);
+                if (IsRepoPresent(userModels, OnnxModelRepo))
+                    return userModels;
+            }
+
+            string under2 = Path.Combine(c, OnnxModelRepo.Replace('/', '_'));
+            if (File.Exists(Path.Combine(under2, "model.onnx")))
+            {
+                TryLinkFlatModelInto(userModels, OnnxModelRepo, under2);
+                if (IsRepoPresent(userModels, OnnxModelRepo))
+                    return userModels;
             }
         }
 
-        Directory.CreateDirectory(besideApp);
-        return besideApp;
+        return userModels;
     }
 
     private static void TryLinkFlatModelInto(string modelsRoot, string repo, string sourceDir)
@@ -860,6 +886,51 @@ public partial class MainViewModel : ViewModelBase
                 IsBusy = false;
             });
         }
+    }
+
+
+    [RelayCommand]
+    private async Task OpenSettingsAsync()
+    {
+        var window = GetMainWindow();
+        if (window is null) return;
+        var vm = new SettingsViewModel(_settings, onSaved: ApplySettingsLive);
+        var dlg = new Views.SettingsWindow { DataContext = vm };
+        await dlg.ShowDialog(window);
+        ApplySettingsLive();
+    }
+
+    [RelayCommand]
+    private async Task OpenWikiAsync()
+    {
+        string? tag = SelectedTag?.Tag ?? SelectedGlobalTag?.Tag;
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            StatusText = "请先在当前标签或全部标签中选中一个标签。";
+            return;
+        }
+
+        var window = GetMainWindow();
+        if (window is null) return;
+        var vm = new WikiViewModel(tag);
+        var dlg = new Views.WikiWindow { DataContext = vm };
+        await dlg.ShowDialog(window);
+    }
+
+    private void ApplySettingsLive()
+    {
+        if (!string.IsNullOrWhiteSpace(_settings.Wd14Tagger.SelectedModelRepo))
+            OnnxModelRepo = _settings.Wd14Tagger.SelectedModelRepo;
+        GeneralThreshold = _settings.Wd14Tagger.Threshold;
+        CharacterThreshold = _settings.Wd14Tagger.CharacterThreshold;
+        _modelsRoot = ResolveModelsRoot();
+        if (_tagger is not null)
+        {
+            _tagger.Dispose();
+            _tagger = null;
+        }
+        RefreshOnnxStatus();
+        StatusText = $"设置已应用 · Models: {_modelsRoot}";
     }
 
     private static Window? GetMainWindow()

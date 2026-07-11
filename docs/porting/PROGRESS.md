@@ -208,3 +208,12 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 - 三栏布局 + 中栏右侧工具条 + 右栏 Tab（全部标签/预览/ONNX）  
 - 测试 Core 23 + Onnx 5 绿  
 - 整体移植约 **50–55%**（日常打标可用）  
+
+
+---
+
+## 12. Phase 4 / P2（2026-07-11）
+
+- 远程分支已 push：`origin/feature/avalonia-linux-mvp`  
+- 多子代理协作模式写入 `docs/porting/PHASE4_P2.md`  
+- P2 初版：用户配置/Models 目录、设置页、Danbooru Wiki 弹窗  

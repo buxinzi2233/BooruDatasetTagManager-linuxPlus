@@ -54,8 +54,26 @@ if [[ -z "${BDTM_SKIP_CUDA_AUTOLIB:-}" ]]; then
   done
 fi
 
-# Models dir convenience
-export BDTM_MODELS_DIR="${BDTM_MODELS_DIR:-$ROOT/dist/linux-x64/Models}"
+# Models: default to ~/.local/share/bdtm/Models (override with BDTM_MODELS_DIR)
+USER_MODELS="${XDG_DATA_HOME:-$HOME/.local/share}/bdtm/Models"
+mkdir -p "$USER_MODELS"
+if [[ -z "${BDTM_MODELS_DIR:-}" ]]; then
+  DIST_MODELS="$ROOT/dist/linux-x64/Models"
+  if [[ ! -e "$USER_MODELS/SmilingWolf/wd-eva02-large-tagger-v3" && -e "$DIST_MODELS/SmilingWolf/wd-eva02-large-tagger-v3" ]]; then
+    mkdir -p "$USER_MODELS/SmilingWolf"
+    ln -sfn "$DIST_MODELS/SmilingWolf/wd-eva02-large-tagger-v3" \
+      "$USER_MODELS/SmilingWolf/wd-eva02-large-tagger-v3" || true
+  fi
+  # also try common local caches
+  if [[ ! -e "$USER_MODELS/SmilingWolf/wd-eva02-large-tagger-v3" ]]; then
+    CAND="$HOME/Projects/toolbox/datasets/Tool/sd-image-sorter/data/models/wd14-tagger/wd-eva02-large-tagger-v3"
+    if [[ -d "$CAND" ]]; then
+      mkdir -p "$USER_MODELS/SmilingWolf"
+      ln -sfn "$CAND" "$USER_MODELS/SmilingWolf/wd-eva02-large-tagger-v3" || true
+    fi
+  fi
+  export BDTM_MODELS_DIR="$USER_MODELS"
+fi
 
 if [[ "${BDTM_DEBUG_EP:-}" == "1" ]]; then
   echo "APP=$APP"

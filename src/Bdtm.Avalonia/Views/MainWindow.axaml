@@ -18,7 +18,8 @@
         <MenuItem Header="打开数据集文件夹…" Command="{Binding OpenFolderCommand}" />
         <MenuItem Header="保存标签" Command="{Binding SaveCommand}" HotKey="Ctrl+S" />
         <Separator />
-        <MenuItem Header="保存设置" Command="{Binding SaveSettingsCommand}" />
+        <MenuItem Header="设置…" Command="{Binding OpenSettingsCommand}" />
+        <MenuItem Header="快速保存当前 ONNX 阈值" Command="{Binding SaveSettingsCommand}" />
       </MenuItem>
       <MenuItem Header="打标(_T)">
         <MenuItem Header="ONNX 打标当前图" Command="{Binding RunOnnxOnCurrentCommand}" />
@@ -167,6 +168,10 @@
                       Command="{Binding RunOnnxOnCurrentCommand}"
                       ToolTip.Tip="ONNX 打标当前图"
                       Content="AI" FontSize="11" FontWeight="SemiBold" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding OpenWikiCommand}"
+                      ToolTip.Tip="Danbooru Wiki（当前/全局选中标签）"
+                      Content="W" FontWeight="SemiBold" />
             </StackPanel>
           </Border>
         </Grid>

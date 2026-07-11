@@ -30,7 +30,8 @@ Last progress write-up: `docs/porting/STATUS_2026-07-11.md`（用户确认 UI �
 - [ ] Batch ONNX for selection/all
 - [ ] Full i18n parity with WinForms language files
 - [ ] AppImage / AUR package
-- [ ] Push branch / open PR
+- [x] Push branch
+- [ ] Open PR
 
 ## Verify
 

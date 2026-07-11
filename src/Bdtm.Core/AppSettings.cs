@@ -65,6 +65,7 @@ public sealed class AppSettings
 
     /// <summary>
     /// Loads settings from appDir/settings.json. Creates defaults if missing or corrupt.
+    /// Prefer <see cref="LoadUserSettings"/> on Linux desktop.
     /// </summary>
     public static AppSettings Load(string appDir)
     {
@@ -72,10 +73,31 @@ public sealed class AppSettings
             throw new ArgumentException("Application directory is required.", nameof(appDir));
 
         Directory.CreateDirectory(appDir);
+        return LoadFromFile(Path.Combine(appDir, "settings.json"));
+    }
+
+    /// <summary>Load from XDG config path (~/.config/bdtm/settings.json).</summary>
+    public static AppSettings LoadUserSettings()
+    {
+        AppPaths.EnsureCreated();
+        var settings = LoadFromFile(AppPaths.SettingsFilePath);
+        if (string.IsNullOrWhiteSpace(settings.ModelsPath))
+            settings.ModelsPath = AppPaths.DefaultModelsDir;
+        return settings;
+    }
+
+    public static AppSettings LoadFromFile(string settingsFile)
+    {
+        if (string.IsNullOrWhiteSpace(settingsFile))
+            throw new ArgumentException("Settings file path is required.", nameof(settingsFile));
+
+        string? dir = Path.GetDirectoryName(settingsFile);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
 
         var settings = new AppSettings
         {
-            _settingsFile = Path.Combine(appDir, "settings.json"),
+            _settingsFile = settingsFile,
         };
 
         if (!File.Exists(settings._settingsFile))
