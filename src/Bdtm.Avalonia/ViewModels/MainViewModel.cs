@@ -90,8 +90,10 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnShowPathsChanged(bool value)
     {
+        // Force each row to refresh; ListBox virtualization can keep stale visuals.
         foreach (var item in Images)
             item.ShowFullPath = value;
+        StatusText = value ? "已开启：列表显示完整路径" : "已关闭：列表隐藏完整路径";
     }
 
     partial void OnCurrentTagFilterChanged(string value) => ApplyCurrentTagFilter();
