@@ -1364,6 +1364,153 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    private static bool HasValidTag2NlSettings(LlmSettings llm)
+    {
+        if (string.IsNullOrWhiteSpace(llm.VisionModel)) return false;
+        if (!Uri.TryCreate((llm.Endpoint ?? string.Empty).Trim(), UriKind.Absolute, out var endpoint))
+            return false;
+        return endpoint.Scheme == Uri.UriSchemeHttp || endpoint.Scheme == Uri.UriSchemeHttps;
+    }
+
+    private bool DatasetHasUnsavedChanges()
+    {
+        if (string.IsNullOrEmpty(_dataset.DatasetRoot)) return false;
+        string sep = _settings.SeparatorOnSave;
+        return _dataset.DataSet.Values.Any(i => i.IsModified(sep));
+    }
+
+    [RelayCommand]
+    private async Task RunTag2NlAsync()
+    {
+        if (IsBusy || IsBatchRunning) return;
+        if (string.IsNullOrWhiteSpace(_dataset.DatasetRoot))
+        {
+            StatusText = "请先打开数据集文件夹。";
+            return;
+        }
+
+        var window = GetMainWindow();
+        if (window is null) return;
+
+        try
+        {
+            // Flush tag editor into model; auto-save dirty dataset before scanning (Linux MVP).
+            ApplyCurrentTagsToModel();
+            if (DatasetHasUnsavedChanges())
+            {
+                _dataset.SaveAll();
+                StatusText = "已保存修改，开始 TAG2NL…";
+            }
+
+            if (!HasValidTag2NlSettings(_settings.Llm))
+            {
+                StatusText = "请先在设置中配置有效的 LLM Endpoint 与 Vision 模型。";
+                await OpenSettingsAsync();
+                return;
+            }
+
+            IsBusy = true;
+            StatusText = "TAG2NL：扫描中…";
+            CaptionScanResult scan;
+            try
+            {
+                scan = await CaptionGenerationService.ScanDirectoryAsync(_dataset.DatasetRoot);
+            }
+            catch (Exception ex)
+            {
+                StatusText = "TAG2NL 扫描失败: " + ex.Message;
+                return;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+
+            var confirmVm = new Tag2NlConfirmViewModel(scan);
+            var confirm = new Views.Tag2NlConfirmWindow { DataContext = confirmVm };
+            var ok = await confirm.ShowDialog<bool?>(window);
+            if (ok != true)
+            {
+                StatusText = "已取消 TAG2NL。";
+                return;
+            }
+
+            bool skipExisting = !confirmVm.ReprocessExisting;
+            if (skipExisting && scan.Pending == 0)
+            {
+                StatusText = $"TAG2NL 完成 · 成功 0 · 跳过 {scan.Existing} · 失败 0 · 输出 {scan.OutputRoot}";
+                return;
+            }
+
+            var progressVm = new Tag2NlProgressViewModel();
+            var progressWin = new Views.Tag2NlProgressWindow { DataContext = progressVm };
+            var progress = new Progress<CaptionGenerationProgress>(p =>
+            {
+                Dispatcher.UIThread.Post(() => progressVm.ApplyProgress(p));
+            });
+
+            IsBusy = true;
+            progressWin.Show(window);
+
+            CaptionGenerationResult result;
+            try
+            {
+                using var client = new OpenAiVisionClient(_settings.Llm);
+                var service = new CaptionGenerationService(async (req, ct) =>
+                {
+                    var completion = await client.CompleteAsync(new OpenAiVisionCompletionRequest
+                    {
+                        SystemPrompt = req.SystemPrompt,
+                        UserPrompt = req.UserPrompt,
+                        ImageData = req.ImageData,
+                        ContentType = req.ContentType,
+                    }, ct).ConfigureAwait(false);
+
+                    if (!completion.Success)
+                        return new CaptionModelResponse(string.Empty, completion.ErrorMessage ?? "LLM error");
+                    return new CaptionModelResponse(completion.Text ?? string.Empty, string.Empty);
+                });
+
+                result = await service.ProcessAsync(
+                    scan,
+                    new CaptionGenerationOptions
+                    {
+                        SystemPrompt = string.IsNullOrWhiteSpace(_settings.Llm.Tag2NlSystemPrompt)
+                            ? LlmDefaults.Tag2NlSystemPrompt
+                            : _settings.Llm.Tag2NlSystemPrompt,
+                        SkipExisting = skipExisting,
+                        MaxConcurrency = _settings.Llm.Tag2NlConcurrency,
+                    },
+                    progress,
+                    progressVm.Token).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                result = new CaptionGenerationResult { Failed = 1 };
+                result.Errors.Add(ex.Message);
+            }
+            finally
+            {
+                progressVm.AllowClose = true;
+                try { progressWin.Close(); } catch { /* ignore */ }
+                IsBusy = false;
+            }
+
+            string prefix = result.Canceled ? "TAG2NL 已取消" : "TAG2NL 完成";
+            string status =
+                $"{prefix} · 成功 {result.Succeeded} · 跳过 {result.Skipped} · 失败 {result.Failed} · 输出 {scan.OutputRoot}";
+            if (result.Errors.Count > 0)
+                status += " | 错误: " + string.Join("; ", result.Errors.Take(5));
+
+            await RunOnUiAsync(() => StatusText = status);
+        }
+        catch (Exception ex)
+        {
+            StatusText = "TAG2NL 失败: " + ex.Message;
+            IsBusy = false;
+        }
+    }
+
     private static Window? GetMainWindow()
     {
         if (global::Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
