@@ -3,30 +3,29 @@
         xmlns:vm="using:Bdtm.Avalonia.ViewModels"
         x:Class="Bdtm.Avalonia.Views.OnnxPreviewWindow"
         x:DataType="vm:OnnxPreviewViewModel"
-        Width="720" Height="700"
-        MinWidth="560" MinHeight="480"
+        Width="760" Height="720"
+        MinWidth="600" MinHeight="500"
         Title="ONNX 打标预览"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
         ShowInTaskbar="False"
         Topmost="True">
   <DockPanel Margin="16">
-    <!-- Bottom actions: full width, clear padding so not clipped -->
     <Border DockPanel.Dock="Bottom"
             Margin="0,12,0,0"
-            Padding="0,10,0,0"
+            Padding="0,12,0,0"
             BorderBrush="#3f3f46"
             BorderThickness="0,1,0,0">
       <Grid ColumnDefinitions="*,Auto">
         <TextBlock Text="{Binding SelectedCountText}"
                    VerticalAlignment="Center"
-                   Opacity="0.8"
-                   Margin="0,0,12,0" />
+                   Opacity="0.85"
+                   Margin="0,0,16,0" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-          <Button Content="全选" Command="{Binding SelectAllCommand}" MinWidth="72" Padding="12,6" />
-          <Button Content="全不选" Command="{Binding SelectNoneCommand}" MinWidth="72" Padding="12,6" />
-          <Button Content="应用选中" Click="Apply_Click" MinWidth="100" Padding="14,6" FontWeight="SemiBold" />
-          <Button Content="取消" Click="Cancel_Click" MinWidth="80" Padding="12,6" />
+          <Button Content="全选" Command="{Binding SelectAllCommand}" MinWidth="76" Padding="14,7" />
+          <Button Content="全不选" Command="{Binding SelectNoneCommand}" MinWidth="76" Padding="14,7" />
+          <Button Content="应用选中" Click="Apply_Click" MinWidth="104" Padding="16,7" FontWeight="SemiBold" />
+          <Button Content="取消" Click="Cancel_Click" MinWidth="84" Padding="14,7" />
         </StackPanel>
       </Grid>
     </Border>
@@ -50,29 +49,40 @@
               GridLinesVisibility="Horizontal"
               HeadersVisibility="Column"
               SelectionMode="Single"
-              RowHeight="30"
-              ColumnHeaderHeight="34"
+              RowHeight="32"
+              ColumnHeaderHeight="36"
               BorderThickness="1"
               BorderBrush="#3f3f46">
       <DataGrid.Columns>
-        <DataGridCheckBoxColumn Header="选用"
-                                Binding="{Binding IsSelected, Mode=TwoWay}"
-                                Width="56"
-                                MinWidth="56" />
+        <!-- Template column: CheckBoxColumn header "选用" was clipped to "选" -->
+        <DataGridTemplateColumn Header="写入"
+                                Width="64"
+                                MinWidth="64"
+                                MaxWidth="72">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:PreviewTagRow">
+              <CheckBox HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                        Margin="8,0" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
         <DataGridTextColumn Header="标签"
                             Binding="{Binding Tag}"
-                            Width="2.2*"
-                            MinWidth="140"
+                            Width="2.4*"
+                            MinWidth="160"
                             IsReadOnly="True" />
         <DataGridTextColumn Header="中文"
                             Binding="{Binding Chinese}"
                             Width="*"
-                            MinWidth="96"
+                            MinWidth="100"
                             IsReadOnly="True" />
         <DataGridTextColumn Header="置信度"
                             Binding="{Binding ConfidenceText}"
-                            Width="96"
-                            MinWidth="96"
+                            Width="100"
+                            MinWidth="100"
                             IsReadOnly="True" />
       </DataGrid.Columns>
     </DataGrid>
