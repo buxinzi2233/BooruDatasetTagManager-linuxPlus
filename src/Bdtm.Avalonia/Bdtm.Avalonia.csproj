@@ -31,5 +31,11 @@
   <ItemGroup>
     <Content Include="Data\danbooru-0-zh.csv" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\Agent\skills\**\*"
+             Link="Agent\skills\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
 

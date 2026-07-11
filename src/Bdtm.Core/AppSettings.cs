@@ -54,6 +54,12 @@ public sealed class AppSettings
     public Wd14TaggerSettings Wd14Tagger { get; set; } = new();
     public LlmSettings Llm { get; set; } = new();
 
+    /// <summary>LLM model id used by character tag audit (empty = use Llm.VisionModel).</summary>
+    public string CharacterTagAuditModel { get; set; } = string.Empty;
+
+    /// <summary>Minimum character-tag frequency before audit considers the tag.</summary>
+    public int CharacterTagAuditMinimumCount { get; set; } = 10;
+
     /// <summary>Optional font preference without System.Drawing.</summary>
     public string? FontFamily { get; set; }
 
@@ -129,6 +135,9 @@ public sealed class AppSettings
             loaded.DefaultTagsFileExtension ??= "txt";
             if (loaded._tagsFilesExt is null || loaded._tagsFilesExt.Length == 0)
                 loaded._tagsFilesExt = new[] { "txt", "caption" };
+            loaded.CharacterTagAuditModel ??= string.Empty;
+            if (loaded.CharacterTagAuditMinimumCount <= 0)
+                loaded.CharacterTagAuditMinimumCount = 10;
             return loaded;
         }
         catch (Exception)

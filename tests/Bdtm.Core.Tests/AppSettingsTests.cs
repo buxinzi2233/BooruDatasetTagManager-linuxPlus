@@ -51,6 +51,8 @@ public class AppSettingsTests : IDisposable
         Assert.Equal("SmilingWolf/wd-eva02-large-tagger-v3", settings.Wd14Tagger.SelectedModelRepo);
         Assert.Contains("txt", settings.GetTagFilesExtensions());
         Assert.Contains("caption", settings.GetTagFilesExtensions());
+        Assert.Equal(string.Empty, settings.CharacterTagAuditModel);
+        Assert.Equal(10, settings.CharacterTagAuditMinimumCount);
     }
 
     [Fact]
@@ -158,5 +160,71 @@ public class AppSettingsTests : IDisposable
         Assert.Equal(1, llm.Tag2NlConcurrency);
         llm.Tag2NlConcurrency = 500;
         Assert.Equal(100, llm.Tag2NlConcurrency);
+    }
+
+    [Fact]
+    public void CharacterTagAuditModel_RoundTrip()
+    {
+        var settings = AppSettings.Load(_tempRoot);
+        settings.CharacterTagAuditModel = "gpt-4o";
+        settings.CharacterTagAuditMinimumCount = 12;
+        settings.Save();
+
+        var reloaded = AppSettings.Load(_tempRoot);
+        Assert.Equal("gpt-4o", reloaded.CharacterTagAuditModel);
+        Assert.Equal(12, reloaded.CharacterTagAuditMinimumCount);
+    }
+
+    [Fact]
+    public void CharacterTagAuditMinimumCount_DefaultsWhenNonPositiveOnLoad()
+    {
+        string settingsPath = Path.Combine(_tempRoot, "settings.json");
+        File.WriteAllText(settingsPath, """
+            {
+              "Language": "zh-CN",
+              "CharacterTagAuditModel": null,
+              "CharacterTagAuditMinimumCount": 0
+            }
+            """);
+
+        var loadedZero = AppSettings.Load(_tempRoot);
+        Assert.Equal(string.Empty, loadedZero.CharacterTagAuditModel);
+        Assert.Equal(10, loadedZero.CharacterTagAuditMinimumCount);
+
+        File.WriteAllText(settingsPath, """
+            {
+              "Language": "zh-CN",
+              "CharacterTagAuditModel": "x",
+              "CharacterTagAuditMinimumCount": -3
+            }
+            """);
+
+        var loadedNegative = AppSettings.Load(_tempRoot);
+        Assert.Equal("x", loadedNegative.CharacterTagAuditModel);
+        Assert.Equal(10, loadedNegative.CharacterTagAuditMinimumCount);
+    }
+
+    [Fact]
+    public void AgentSkillsExistInRepo()
+    {
+        string dir = AppContext.BaseDirectory;
+        string? root = null;
+        for (int i = 0; i < 10 && dir != null; i++)
+        {
+            if (Directory.Exists(Path.Combine(dir, "Agent", "skills", "character-tag-auditor")))
+            {
+                root = dir;
+                break;
+            }
+
+            dir = Directory.GetParent(dir)?.FullName!;
+        }
+
+        if (root is null && Directory.Exists("/home/buxinzi/Projects/BooruDatasetTagManager-linuxPlus/Agent/skills"))
+            root = "/home/buxinzi/Projects/BooruDatasetTagManager-linuxPlus";
+
+        Assert.NotNull(root);
+        Assert.True(File.Exists(Path.Combine(root!, "Agent", "skills", "character-tag-auditor", "SKILL.md")));
+        Assert.True(File.Exists(Path.Combine(root!, "Agent", "skills", "prompt-pyramid", "SKILL.md")));
     }
 }
