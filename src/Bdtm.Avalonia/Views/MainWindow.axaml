@@ -282,8 +282,8 @@
                 </ComboBox>
 
                 <TextBlock Text="{Binding ProviderText}" TextWrapping="Wrap" />
-                <CheckBox Content="单图打标前预览确认"
-                          IsChecked="{Binding ConfirmOnnxBeforeWrite}"
+                <CheckBox Content="打标前预览确认（单图/仅选一张）"
+                          IsChecked="{Binding ConfirmOnnxBeforeWrite, Mode=TwoWay}"
                           ToolTip.Tip="关闭后「ONNX 当前」将直接写入；批量仍直接写入" />
 
                 <TextBlock Opacity="0.8" Text="下载源" />

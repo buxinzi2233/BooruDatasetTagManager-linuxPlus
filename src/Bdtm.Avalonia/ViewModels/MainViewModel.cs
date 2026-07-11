@@ -309,27 +309,21 @@ public partial class MainViewModel : ViewModelBase
             IReadOnlyList<TagPrediction> tagsToApply = result.Tags;
             if (ConfirmOnnxBeforeWrite)
             {
-                IsBusy = false; // allow dialog interaction
-                var previewVm = new OnnxPreviewViewModel(
+                // ShowDialog MUST run on UI thread; await Task.Run() may resume on thread-pool.
+                IsBusy = false;
+                var previewDecision = await PromptOnnxPreviewAsync(
                     imageItem.Name,
                     result.Tags,
-                    _zhLookup,
-                    WriteMode,
                     result.ElapsedMilliseconds,
                     result.Provider);
-                var window = GetMainWindow();
-                if (window is not null)
+                if (!previewDecision.Apply)
                 {
-                    var dlg = new Views.OnnxPreviewWindow { DataContext = previewVm };
-                    var applied = await dlg.ShowDialog<bool?>(window);
-                    if (applied != true || !previewVm.Confirmed)
-                    {
-                        StatusText = $"已取消写入 · 推理 {result.Tags.Count} tags · {result.ElapsedMilliseconds:F0} ms · {result.Provider}";
-                        ProviderText = FormatProviderText(sessionLoaded: true);
-                        return;
-                    }
-                    tagsToApply = previewVm.GetSelectedPredictions();
+                    StatusText = previewDecision.StatusMessage
+                        ?? ("已取消写入 · 推理 " + result.Tags.Count + " tags · " + result.ElapsedMilliseconds.ToString("F0") + " ms · " + result.Provider);
+                    ProviderText = FormatProviderText(sessionLoaded: true);
+                    return;
                 }
+                tagsToApply = previewDecision.Tags;
                 IsBusy = true;
             }
 
@@ -867,9 +861,28 @@ public partial class MainViewModel : ViewModelBase
                     var result = await Task.Run(
                         () => _tagger.TagImage(imageItem.Path, GeneralThreshold, CharacterThreshold),
                         ct);
+
+                    IReadOnlyList<TagPrediction> tagsToApply = result.Tags;
+                    if (ConfirmOnnxBeforeWrite && targets.Count == 1)
+                    {
+                        await RunOnUiAsync(() => { IsBusy = false; IsBatchRunning = false; });
+                        var previewDecision = await PromptOnnxPreviewAsync(
+                            imageItem.Name,
+                            result.Tags,
+                            result.ElapsedMilliseconds,
+                            result.Provider);
+                        if (!previewDecision.Apply)
+                        {
+                            StatusText = previewDecision.StatusMessage ?? "已取消写入（预览）。";
+                            return;
+                        }
+                        tagsToApply = previewDecision.Tags;
+                        await RunOnUiAsync(() => { IsBusy = true; IsBatchRunning = true; });
+                    }
+
                     await RunOnUiAsync(() =>
                     {
-                        TagWriteService.ApplyTags(imageItem.Data, result.Tags, WriteMode, sortByConfidence: true);
+                        TagWriteService.ApplyTags(imageItem.Data, tagsToApply, WriteMode, sortByConfidence: true);
                         if (ReferenceEquals(SelectedImage, imageItem))
                             ReloadCurrentTags();
                     });
@@ -1103,6 +1116,76 @@ public partial class MainViewModel : ViewModelBase
     private void CancelDownload()
     {
         _downloadCts?.Cancel();
+    }
+
+
+    private sealed class OnnxPreviewDecision
+    {
+        public bool Apply { get; init; }
+        public IReadOnlyList<TagPrediction> Tags { get; init; } = Array.Empty<TagPrediction>();
+        public string? StatusMessage { get; init; }
+    }
+
+    private Task<OnnxPreviewDecision> PromptOnnxPreviewAsync(
+        string imageName,
+        IReadOnlyList<TagPrediction> predictions,
+        double elapsedMs,
+        OnnxExecutionProvider provider)
+    {
+        async Task<OnnxPreviewDecision> ShowCoreAsync()
+        {
+            var previewVm = new OnnxPreviewViewModel(
+                imageName,
+                predictions,
+                _zhLookup,
+                WriteMode,
+                elapsedMs,
+                provider);
+
+            var window = GetMainWindow();
+            if (window is null)
+            {
+                return new OnnxPreviewDecision
+                {
+                    Apply = false,
+                    StatusMessage = "无法显示预览窗（主窗口为空）。未写入标签。",
+                };
+            }
+
+            try
+            {
+                var dlg = new Views.OnnxPreviewWindow { DataContext = previewVm };
+                var applied = await dlg.ShowDialog<bool?>(window);
+                if (applied == true && previewVm.Confirmed)
+                {
+                    return new OnnxPreviewDecision
+                    {
+                        Apply = true,
+                        Tags = previewVm.GetSelectedPredictions(),
+                    };
+                }
+
+                return new OnnxPreviewDecision
+                {
+                    Apply = false,
+                    StatusMessage = "已取消写入 · 推理 " + predictions.Count + " tags · " + elapsedMs.ToString("F0") + " ms · " + provider,
+                };
+            }
+            catch (Exception ex)
+            {
+                return new OnnxPreviewDecision
+                {
+                    Apply = false,
+                    StatusMessage = "预览窗打开失败: " + ex.Message + "（未写入）",
+                };
+            }
+        }
+
+        if (Dispatcher.UIThread.CheckAccess())
+            return ShowCoreAsync();
+
+        // Avalonia 11: InvokeAsync(Func<Task<T>>) returns Task<T>
+        return Dispatcher.UIThread.InvokeAsync(ShowCoreAsync);
     }
 
     private static Window? GetMainWindow()
