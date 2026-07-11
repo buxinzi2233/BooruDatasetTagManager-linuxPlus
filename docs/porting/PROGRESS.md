@@ -4,7 +4,7 @@
 **分支：** `feature/avalonia-linux-mvp`  
 **仓库：** `/home/buxinzi/Projects/BooruDatasetTagManager-linuxPlus`  
 **路线：** B — Avalonia 原生 Linux 移植（核心 MVP）  
-**相对 main 提交数：** 9
+**相对 main 提交数：** 22（记录时；以 git 为准）
 
 ---
 
@@ -13,13 +13,16 @@
 | 维度 | 状态 |
 |------|------|
 | 核心 MVP 目标 | **已达成并可日常使用** |
-| 单元测试 | Core 19 + Onnx 5 = **24 全部通过** |
-| 用户手测 | 打开数据集 / 编辑保存标签 / ONNX 打标 **通过** |
-| CUDA | **可用**（需 `./scripts/run-linux.sh` 或正确 `LD_LIBRARY_PATH`） |
-| 相对 WinForms Plus 全功能 | 约 **MVP ~40% 功能面**；领域底座已立，大量对话框/LLM/视频未移植 |
-| 远程推送 | 本地分支，**尚未 push**（如需开 PR 再推） |
+| 单元测试 | Core **26** + Onnx **5** 通过 |
+| 用户手测 | 布局 / 编辑保存 / CUDA 打标 **通过** |
+| CUDA | **可用**（`./scripts/run-linux.sh`） |
+| P2 | 用户配置与 Models 目录、设置页、Wiki **初版完成** |
+| 相对 WinForms Plus 全功能 | 约 **55–60%**（日常打标工作台）；LLM/视频/审计等未移植 |
+| 远程推送 | **已 push** `origin/feature/avalonia-linux-mvp` |
 
-一句话：**Linux 上已经能完成「打开数据集 → 改标签 → 保存 → WD14 CUDA 打标」闭环；不是完整 Plus 克隆。**
+一句话：**Linux 上可完成打开数据集 → 改标签 → 保存 → 批量 WD14 CUDA 打标，并具备设置页与 Wiki；不是完整 Plus 克隆。**
+
+最新快照：`docs/porting/STATUS_2026-07-11_post_p2.md`
 
 ---
 
@@ -109,8 +112,8 @@ BooruDatasetTagManager/     原 WinForms（保留对照，非 Linux 目标）
 2. **publish 会重建 dist/**：模型 symlink 可能丢失，需再链。  
 3. **启动「就绪」≠ 会话已加载**：首次打标才创建 CUDA 会话（设计如此）。  
 4. **标签模型为简化版**：无 WinForms BindingSource/完整权重括号历史；权重序列化简化。  
-5. **无缩略图 / 无批量 ONNX UI**。  
-6. **分支未 push** 到 GitHub。  
+5. **缩略图与批量 ONNX UI 已具备**（P0/P1）。  
+6. **分支已 push**（`origin/feature/avalonia-linux-mvp`）。  
 7. 对话中曾出现 PAT，应已轮换（安全）。
 
 ### CUDA 实测（OnnxEpProbe）
@@ -147,12 +150,11 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 
 ## 7. 建议下一步（优先级）
 
-1. **P0** `git push -u origin feature/avalonia-linux-mvp`（备份/协作）  
-2. **P1** 批量 ONNX（选中/全部）+ 进度条  
-3. **P1** 列表缩略图（ImageSharp 异步）  
-4. **P2** HF 下载或固定 Models 用户目录（`~/.local/share/bdtm/Models`）  
-5. **P2** LLM / TAG2NL（已有 Core 侧可接 HTTP）  
-6. **P3** AppImage 打包  
+1. **开 GitHub PR**（分支已在远程）  
+2. **P3** 视频工具 UI（真正使用 FFmpeg 抽帧/转码）或 Wiki 增强  
+3. **HF 模型下载 UI** / 更完整设置  
+4. **LLM / TAG2NL / 角色审计**  
+5. **AppImage / AUR**  
 
 ---
 
@@ -163,9 +165,10 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 | 工程骨架 / CI 本地脚本 | 95% |
 | Core 领域（MVP 范围） | 85% |
 | ONNX WD14 + CUDA 路径 | 80%（缺系统级 CUDA 安装文档/打包内置） |
-| Avalonia UI MVP | 70% |
+| Avalonia 工作台 UI | ~80% |
+| 桌面集成（路径/设置/Wiki） | ~70% |
 | Plus 功能对齐 | 15–25% |
-| **整体 Linux 移植** | **约 35–40%**（MVP 可用；全量仍长） |
+| **整体 Linux 移植** | **约 55–60%**（日常打标可用；全量仍长） |
 
 *记录人：实现会话 2026-07-11*
 
@@ -217,3 +220,13 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 - 远程分支已 push：`origin/feature/avalonia-linux-mvp`  
 - 多子代理协作模式写入 `docs/porting/PHASE4_P2.md`  
 - P2 初版：用户配置/Models 目录、设置页、Danbooru Wiki 弹窗  
+
+
+---
+
+## 13. 文档同步（2026-07-11 · post-P2）
+
+用户要求再次「记录当前状态 / 回报总体进度」后刷新：
+
+- 新建 `STATUS_2026-07-11_post_p2.md`  
+- 修正本文与 `MVP_STATUS.md` 中过时项（push、测试数、缩略图/批量已完成）  

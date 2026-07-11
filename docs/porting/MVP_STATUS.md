@@ -1,7 +1,8 @@
-# MVP Status
+# MVP / Port Status
 
 Branch: `feature/avalonia-linux-mvp`  
-Last progress write-up: `docs/porting/STATUS_2026-07-11.md`（用户确认 UI 正常）
+Remote: `origin/feature/avalonia-linux-mvp`  
+Latest status: `docs/porting/STATUS_2026-07-11_post_p2.md`
 
 ## Done
 
@@ -10,35 +11,35 @@ Last progress write-up: `docs/porting/STATUS_2026-07-11.md`（用户确认 UI �
 - [x] Portable `AppSettings` + `FfmpegLocator`
 - [x] Portable `DatasetManager` / `TagList` / `PromptParser`
 - [x] `Bdtm.Onnx` CUDA-first session + WD14 service + tag write
-- [x] Avalonia MVP three-pane UI (open / edit / save / ONNX current)
-- [x] `scripts/build-linux.sh`, `scripts/publish-linux.sh`, `scripts/run-linux.sh` (CUDA LD path)
-- [x] ONNX EP probe tool `tools/OnnxEpProbe`
-- [x] CUDA fallback reason in UI; ready-vs-session-loaded wording
-- [x] User-verified: dataset edit/save + CUDA tagging works with `run-linux.sh`
-- [x] Phase 2 P0: thumbnails, Chinese column, global tag table, image preview
-- [x] Phase 3 P1: tag reorder, batch ONNX, tag filters
+- [x] Avalonia three-pane workbench (open / edit / save / preview / all-tags)
+- [x] Thumbnails + Chinese column + global tag table
+- [x] Tag reorder, filters, batch ONNX (current / multi / all + cancel)
+- [x] UI polish: rails, headers, ShowPaths TwoWay (user-confirmed OK)
+- [x] `scripts/build-linux.sh`, `publish-linux.sh`, `run-linux.sh`
+- [x] ONNX EP probe (`tools/OnnxEpProbe`)
+- [x] CUDA fallback reason in UI; ready vs session-loaded wording
+- [x] User-verified: dataset edit/save + CUDA tagging with `run-linux.sh`
+- [x] P2: XDG config/Models (`AppPaths`), settings window, Wiki popup
+- [x] Branch pushed to GitHub
 
-## Not in MVP (backlog)
+## Backlog (not done)
 
+- [ ] Open GitHub PR (link ready)
 - [ ] LLM vision / TAG2NL
 - [ ] Character tag audit wizard
-- [ ] Video tools UI
+- [ ] Video tools UI (uses FFmpeg for real)
 - [ ] Crop / background removal
 - [ ] PixAI ONNX
 - [ ] Model download UI (HF)
-- [ ] Thumbnail previews in list
-- [ ] Batch ONNX for selection/all
 - [ ] Full i18n parity with WinForms language files
 - [ ] AppImage / AUR package
-- [x] Push branch
-- [ ] Open PR
 
 ## Verify
 
 ```bash
-./scripts/build-linux.sh          # 24 tests
+./scripts/build-linux.sh          # Core 26 + Onnx 5
 ./scripts/publish-linux.sh
-./scripts/run-linux.sh            # preferred (CUDA libs)
+./scripts/run-linux.sh            # preferred (CUDA libs + user Models)
 ```
 
-Tests last green: **Core 19 + Onnx 5**.
+Tests last green: **Core 26 + Onnx 5**.
