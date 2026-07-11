@@ -72,6 +72,7 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private TagWriteMode writeMode = TagWriteMode.AppendNew;
     [ObservableProperty] private Bitmap? previewImage;
     [ObservableProperty] private bool showPaths;
+    [ObservableProperty] private bool hasNoImages = true;
     [ObservableProperty] private string currentTagFilter = string.Empty;
     [ObservableProperty] private string globalTagFilter = string.Empty;
     [ObservableProperty] private double batchProgress;
@@ -133,6 +134,7 @@ public partial class MainViewModel : ViewModelBase
                 StatusText = "正在加载…";
                 Images.Clear();
                 SelectedImages.Clear();
+                HasNoImages = true;
                 CurrentTags.Clear();
                 GlobalTags.Clear();
                 FilteredCurrentTags.Clear();
@@ -180,6 +182,7 @@ public partial class MainViewModel : ViewModelBase
                 DatasetPath = path;
                 foreach (var item in items)
                     Images.Add(item);
+                HasNoImages = Images.Count == 0;
                 RebuildGlobalTags();
                 if (Images.Count > 0)
                     SelectedImage = Images[0];

@@ -30,3 +30,18 @@
 - Controller：进度与验收  
 - Implementer：Core 查询 + Avalonia UI  
 - QA：构建/测试/对照清单  
+
+
+## Layout rebalance (2026-07-11)
+
+User reported P1 toolbar crowding: ONNX panel permanently occupied the right column.
+
+**Now aligned to original 3-pane workbench:**
+
+| Column | Content |
+|--------|---------|
+| Left (~32%) | Dataset list only (thumb + name, open button) |
+| Center (~36%) | Current tags full height (add/del/move/save/filter) |
+| Right (~32%) | Tabs: **全部标签** · **预览** · **ONNX** |
+
+ONNX is a tab, not a permanent top-right mega-panel.
