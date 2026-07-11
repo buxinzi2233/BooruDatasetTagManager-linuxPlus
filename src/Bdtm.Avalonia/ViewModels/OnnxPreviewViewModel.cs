@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using Bdtm.Core;
 using Bdtm.Onnx;
@@ -9,19 +10,26 @@ namespace Bdtm.Avalonia.ViewModels;
 
 public partial class PreviewTagRow : ObservableObject
 {
-    public PreviewTagRow(string tag, string chinese, float confidence, bool isSelected = true)
+    private readonly Action? _onSelectionChanged;
+
+    public PreviewTagRow(string tag, string chinese, float confidence, bool isSelected, Action? onSelectionChanged)
     {
         Tag = tag;
         Chinese = chinese;
         Confidence = confidence;
-        IsSelected = isSelected;
+        ConfidenceText = confidence.ToString("0.0000", CultureInfo.InvariantCulture);
+        _isSelected = isSelected;
+        _onSelectionChanged = onSelectionChanged;
     }
 
     public string Tag { get; }
     public string Chinese { get; }
     public float Confidence { get; }
+    public string ConfidenceText { get; }
 
     [ObservableProperty] private bool isSelected;
+
+    partial void OnIsSelectedChanged(bool value) => _onSelectionChanged?.Invoke();
 }
 
 public partial class OnnxPreviewViewModel : ViewModelBase
@@ -37,18 +45,28 @@ public partial class OnnxPreviewViewModel : ViewModelBase
         ImageName = imageName;
         WriteModeText = writeMode == TagWriteMode.ReplaceAll ? "替换全部标签" : "追加新标签";
         Summary = $"{predictions.Count} 个候选 · {elapsedMs:F0} ms · {provider}";
+
         foreach (var p in predictions.OrderByDescending(x => x.Confidence))
         {
             string tag = (p.Tag ?? string.Empty).Trim().Replace(' ', '_');
             if (string.IsNullOrEmpty(tag)) continue;
-            Tags.Add(new PreviewTagRow(tag, zhLookup.GetChinese(tag), p.Confidence, isSelected: true));
+            Tags.Add(new PreviewTagRow(
+                tag,
+                zhLookup.GetChinese(tag),
+                p.Confidence,
+                isSelected: true,
+                onSelectionChanged: RefreshSelectedCount));
         }
+
+        RefreshSelectedCount();
     }
 
     public ObservableCollection<PreviewTagRow> Tags { get; } = new();
     public string ImageName { get; }
     public string WriteModeText { get; }
     public string Summary { get; }
+
+    [ObservableProperty] private string selectedCountText = string.Empty;
 
     public bool Confirmed { get; private set; }
 
@@ -61,13 +79,21 @@ public partial class OnnxPreviewViewModel : ViewModelBase
     private void SelectAll()
     {
         foreach (var t in Tags) t.IsSelected = true;
+        RefreshSelectedCount();
     }
 
     [RelayCommand]
     private void SelectNone()
     {
         foreach (var t in Tags) t.IsSelected = false;
+        RefreshSelectedCount();
     }
 
     public void MarkConfirmed() => Confirmed = true;
+
+    private void RefreshSelectedCount()
+    {
+        int n = Tags.Count(t => t.IsSelected);
+        SelectedCountText = $"已选 {n} / {Tags.Count}";
+    }
 }
