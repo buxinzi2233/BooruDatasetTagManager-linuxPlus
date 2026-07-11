@@ -2,7 +2,7 @@
 
 Branch: `feature/avalonia-linux-mvp`  
 Remote: `origin/feature/avalonia-linux-mvp`  
-Latest status: `docs/porting/STATUS_2026-07-11_current.md`
+Latest status: `docs/porting/STATUS_2026-07-11_post_p52.md`
 
 ## Done
 
@@ -30,27 +30,28 @@ Latest status: `docs/porting/STATUS_2026-07-11_current.md`
 - [x] P4.4 Wiki disk cache (7d TTL under ~/.local/share/bdtm/cache/wiki)
 - [x] P4.3 PixAI ONNX engine + multi-file download
 - [x] P5.1 LLM vision tagging (OpenAI-compatible)
-- [x] Tools menu restored (视频/Wiki/设置)
+- [x] P5.2 TAG2NL whole-dataset caption (Tools → TAG2NL…)
+- [x] Tools menu restored (视频/Wiki/设置/TAG2NL)
 
 ## Backlog (not done)
 
 - [x] Open GitHub PR (#1)
 - [x] LLM vision (current image)
-- [ ] TAG2NL
+- [x] TAG2NL
 - [ ] Character tag audit wizard
 - [x] Video tools UI (info + frame extract; convert API ready)
 - [ ] Crop / background removal
-- [ ] PixAI ONNX
-- [ ] Model download UI (HF)
+- [x] PixAI ONNX
+- [x] Model download UI (HF)
 - [ ] Full i18n parity with WinForms language files
 - [ ] AppImage / AUR package
 
 ## Verify
 
 ```bash
-./scripts/build-linux.sh          # Core tests + Onnx 5 (see build-linux)
+./scripts/build-linux.sh          # Core tests + Onnx (see build-linux)
 ./scripts/publish-linux.sh
 ./scripts/run-linux.sh            # preferred (CUDA libs + user Models)
 ```
 
-Tests last green: **Core ~38 + Onnx 5**. Was: **Core tests + Onnx 5 (see build-linux)**.
+Tests last green: **Core 62 + Onnx 9**.
