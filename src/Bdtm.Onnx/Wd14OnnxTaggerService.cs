@@ -50,6 +50,7 @@ public sealed class Wd14OnnxTaggerService : IDisposable
     public string? LoadedRepo => _loadedRepo;
     public bool IsLoaded => _session is not null;
     public OnnxExecutionProvider ActiveProvider => _sessionFactory.ActiveProvider;
+    public string? FallbackReason => _sessionFactory.FallbackReason;
 
     public static string GetLocalPath(string modelsRoot, string repo, string filename)
     {

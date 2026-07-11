@@ -10,7 +10,8 @@ Branch: `feature/avalonia-linux-mvp`
 - [x] Portable `DatasetManager` / `TagList` / `PromptParser`
 - [x] `Bdtm.Onnx` CUDA-first session + WD14 service + tag write
 - [x] Avalonia MVP three-pane UI (open / edit / save / ONNX current)
-- [x] `scripts/build-linux.sh`, `scripts/publish-linux.sh`
+- [x] `scripts/build-linux.sh`, `scripts/publish-linux.sh`, `scripts/run-linux.sh` (CUDA LD path)
+- [x] ONNX EP probe tool `tools/OnnxEpProbe`
 
 ## Not in MVP (backlog)
 

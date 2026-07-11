@@ -225,7 +225,9 @@ public partial class MainViewModel : ViewModelBase
             ReloadCurrentTags();
             RebuildAllTags();
             StatusText = $"打标完成 · {result.Tags.Count} tags · {result.ElapsedMilliseconds:F0} ms · {result.Provider}";
-            ProviderText = $"ONNX: {result.Provider} · 已加载";
+            ProviderText = FormatProviderText(sessionLoaded: true);
+            if (result.Provider == OnnxExecutionProvider.Cpu && !string.IsNullOrWhiteSpace(_tagger.FallbackReason))
+                StatusText += " | CUDA 回退: " + _tagger.FallbackReason;
         }
         catch (Exception ex)
         {
@@ -401,7 +403,14 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_tagger is null || !sessionLoaded)
             return "ONNX: 模型文件就绪 · 会话未加载";
-        return $"ONNX: {_tagger.ActiveProvider} · 已加载";
+
+        if (_tagger.ActiveProvider == OnnxExecutionProvider.Cuda)
+            return "ONNX: CUDA · 已加载";
+
+        string? reason = _tagger.FallbackReason;
+        if (!string.IsNullOrWhiteSpace(reason))
+            return $"ONNX: CPU · 已加载（CUDA 不可用: {reason}）";
+        return "ONNX: CPU · 已加载";
     }
 
     private void FlushOnnxLogsToStatus()
