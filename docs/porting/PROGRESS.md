@@ -168,3 +168,19 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 | **整体 Linux 移植** | **约 35–40%**（MVP 可用；全量仍长） |
 
 *记录人：实现会话 2026-07-11*
+
+
+---
+
+## 9. Phase 2（P0 工作台对齐）— 2026-07-11
+
+对照原版截图后的差异补齐：
+
+- [x] 左栏缩略图 + 可选路径（视图菜单）
+- [x] 中栏中文翻译列（`danbooru-0-zh.csv` / `ChineseTagLookup`）
+- [x] 右栏全局标签表（标签 | 中文 | 计数）+ 添加到当前
+- [x] 选中图预览区
+
+文档：`docs/porting/UI_GAP_AND_PHASE2.md`
+
+测试：Core **21** + Onnx **5**。

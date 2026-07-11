@@ -2,10 +2,14 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using Bdtm.Avalonia.Services;
 using Bdtm.Core;
 using Bdtm.Onnx;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -19,8 +23,11 @@ public partial class MainViewModel : ViewModelBase
     private readonly string _appDir;
     private readonly System.Collections.Concurrent.ConcurrentQueue<string> _onnxLogs = new();
     private AppSettings _settings;
+    private ChineseTagLookup _zhLookup = ChineseTagLookup.Empty;
     private Wd14OnnxTaggerService? _tagger;
     private string _modelsRoot = string.Empty;
+    private CancellationTokenSource? _previewCts;
+    private int _thumbGen;
 
     public MainViewModel()
     {
@@ -28,7 +35,7 @@ public partial class MainViewModel : ViewModelBase
         _settings = AppSettings.Load(_appDir);
         Images = new ObservableCollection<ImageListItem>();
         CurrentTags = new ObservableCollection<TagRow>();
-        AllTags = new ObservableCollection<string>();
+        GlobalTags = new ObservableCollection<TagCountRow>();
 
         if (!string.IsNullOrWhiteSpace(_settings.Wd14Tagger.SelectedModelRepo))
             OnnxModelRepo = _settings.Wd14Tagger.SelectedModelRepo;
@@ -38,17 +45,19 @@ public partial class MainViewModel : ViewModelBase
         GeneralThreshold = _settings.Wd14Tagger.Threshold;
         CharacterThreshold = _settings.Wd14Tagger.CharacterThreshold;
 
+        LoadChineseLookup();
         _modelsRoot = ResolveModelsRoot();
         RefreshOnnxStatus(prefix: "启动");
-        StatusText = $"模型目录: {_modelsRoot}";
+        StatusText = $"模型目录: {_modelsRoot} · 中文词表: {_zhLookup.Count}";
     }
 
     public ObservableCollection<ImageListItem> Images { get; }
     public ObservableCollection<TagRow> CurrentTags { get; }
-    public ObservableCollection<string> AllTags { get; }
+    public ObservableCollection<TagCountRow> GlobalTags { get; }
 
     [ObservableProperty] private ImageListItem? selectedImage;
     [ObservableProperty] private TagRow? selectedTag;
+    [ObservableProperty] private TagCountRow? selectedGlobalTag;
     [ObservableProperty] private string? newTagText;
     [ObservableProperty] private string statusText = string.Empty;
     [ObservableProperty] private string providerText = string.Empty;
@@ -58,8 +67,14 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private double characterThreshold = 0.85;
     [ObservableProperty] private string onnxModelRepo = "SmilingWolf/wd-eva02-large-tagger-v3";
     [ObservableProperty] private TagWriteMode writeMode = TagWriteMode.AppendNew;
+    [ObservableProperty] private Bitmap? previewImage;
+    [ObservableProperty] private bool showPaths;
 
-    partial void OnSelectedImageChanged(ImageListItem? value) => ReloadCurrentTags();
+    partial void OnSelectedImageChanged(ImageListItem? value)
+    {
+        ReloadCurrentTags();
+        _ = UpdatePreviewAsync(value);
+    }
 
     partial void OnOnnxModelRepoChanged(string value) => RefreshOnnxStatus();
 
@@ -97,8 +112,9 @@ public partial class MainViewModel : ViewModelBase
             StatusText = "正在加载…";
             Images.Clear();
             CurrentTags.Clear();
-            AllTags.Clear();
+            GlobalTags.Clear();
             SelectedImage = null;
+            PreviewImage = null;
 
             var options = new DatasetLoadOptions
             {
@@ -122,12 +138,13 @@ public partial class MainViewModel : ViewModelBase
             foreach (var item in _dataset.GetDataSource())
                 Images.Add(new ImageListItem(item));
 
-            RebuildAllTags();
+            RebuildGlobalTags();
             if (Images.Count > 0)
                 SelectedImage = Images[0];
 
             StatusText = $"已加载 {Images.Count} 项 · {path}";
             RefreshOnnxStatus();
+            _ = LoadThumbnailsAsync();
         }
         catch (Exception ex)
         {
@@ -148,7 +165,7 @@ public partial class MainViewModel : ViewModelBase
             ApplyCurrentTagsToModel();
             bool saved = _dataset.SaveAll();
             StatusText = saved ? "已保存修改的标签文件。" : "没有需要保存的修改。";
-            RebuildAllTags();
+            RebuildGlobalTags();
         }
         catch (Exception ex)
         {
@@ -165,7 +182,7 @@ public partial class MainViewModel : ViewModelBase
         SelectedImage.Data.Tags.Add(tag, skipIfExists: true);
         NewTagText = string.Empty;
         ReloadCurrentTags();
-        RebuildAllTags();
+        RebuildGlobalTags();
         StatusText = $"已添加标签: {tag}";
     }
 
@@ -176,7 +193,17 @@ public partial class MainViewModel : ViewModelBase
         if (SelectedImage is null || target is null) return;
         SelectedImage.Data.Tags.Remove(target.Tag);
         ReloadCurrentTags();
-        RebuildAllTags();
+        RebuildGlobalTags();
+    }
+
+    [RelayCommand]
+    private void AddGlobalTagToCurrent()
+    {
+        if (SelectedImage is null || SelectedGlobalTag is null) return;
+        SelectedImage.Data.Tags.Add(SelectedGlobalTag.Tag, skipIfExists: true);
+        ReloadCurrentTags();
+        RebuildGlobalTags();
+        StatusText = $"已添加: {SelectedGlobalTag.Tag}";
     }
 
     [RelayCommand]
@@ -205,7 +232,7 @@ public partial class MainViewModel : ViewModelBase
             if (!_tagger.IsModelReady(OnnxModelRepo))
             {
                 string expected = Wd14OnnxTaggerService.GetLocalPath(_modelsRoot, OnnxModelRepo, Wd14OnnxTaggerService.ModelFileName);
-                StatusText = $"模型文件未找到。期望: {expected} （以及同目录 selected_tags.csv）";
+                StatusText = $"模型文件未找到。期望: {expected}";
                 RefreshOnnxStatus();
                 return;
             }
@@ -223,7 +250,7 @@ public partial class MainViewModel : ViewModelBase
 
             TagWriteService.ApplyTags(SelectedImage.Data, result.Tags, WriteMode, sortByConfidence: true);
             ReloadCurrentTags();
-            RebuildAllTags();
+            RebuildGlobalTags();
             StatusText = $"打标完成 · {result.Tags.Count} tags · {result.ElapsedMilliseconds:F0} ms · {result.Provider}";
             ProviderText = FormatProviderText(sessionLoaded: true);
             if (result.Provider == OnnxExecutionProvider.Cpu && !string.IsNullOrWhiteSpace(_tagger.FallbackReason))
@@ -245,14 +272,13 @@ public partial class MainViewModel : ViewModelBase
     private void RefreshOnnxStatusCommand()
     {
         _modelsRoot = ResolveModelsRoot();
-        // Force tagger recreate if models root changed.
         if (_tagger is not null)
         {
             _tagger.Dispose();
             _tagger = null;
         }
         RefreshOnnxStatus(prefix: "刷新");
-        StatusText = $"模型目录: {_modelsRoot}";
+        StatusText = $"模型目录: {_modelsRoot} · 中文词表: {_zhLookup.Count}";
     }
 
     [RelayCommand]
@@ -265,6 +291,83 @@ public partial class MainViewModel : ViewModelBase
         _settings.ModelsPath = _modelsRoot;
         _settings.Save();
         StatusText = "设置已保存。";
+    }
+
+    private void LoadChineseLookup()
+    {
+        string[] candidates =
+        {
+            Path.Combine(_appDir, "Data", "danbooru-0-zh.csv"),
+            Path.GetFullPath(Path.Combine(_appDir, "..", "..", "..", "Data", "danbooru-0-zh.csv")),
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Projects/BooruDatasetTagManager-linuxPlus/BooruDatasetTagManager/Data/danbooru-0-zh.csv"),
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Projects/BooruDatasetTagManager-linuxPlus/src/Bdtm.Avalonia/Data/danbooru-0-zh.csv"),
+        };
+
+        foreach (string c in candidates)
+        {
+            if (!File.Exists(c)) continue;
+            _zhLookup = ChineseTagLookup.LoadFromFile(c, fixTags: true);
+            if (_zhLookup.Count > 0)
+                return;
+        }
+
+        _zhLookup = ChineseTagLookup.Empty;
+    }
+
+    private async Task LoadThumbnailsAsync()
+    {
+        int gen = Interlocked.Increment(ref _thumbGen);
+        int edge = Math.Clamp(_settings.PreviewSize, 48, 256);
+        var snapshot = Images.ToList();
+        foreach (var item in snapshot)
+        {
+            if (gen != _thumbGen) return;
+            if (!ImageThumbnailLoader.IsRasterImage(item.Path))
+                continue;
+
+            try
+            {
+                var bmp = await ImageThumbnailLoader.LoadAsync(item.Path, edge);
+                if (gen != _thumbGen) return;
+                if (bmp is null) continue;
+                await Dispatcher.UIThread.InvokeAsync(() => item.Thumbnail = bmp);
+            }
+            catch
+            {
+                // skip bad images
+            }
+        }
+    }
+
+    private async Task UpdatePreviewAsync(ImageListItem? item)
+    {
+        _previewCts?.Cancel();
+        _previewCts = new CancellationTokenSource();
+        var ct = _previewCts.Token;
+
+        if (item is null || !ImageThumbnailLoader.IsRasterImage(item.Path))
+        {
+            PreviewImage = null;
+            return;
+        }
+
+        try
+        {
+            var bmp = await ImageThumbnailLoader.LoadAsync(item.Path, maxEdge: 720, ct);
+            if (!ct.IsCancellationRequested)
+                PreviewImage = bmp;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch
+        {
+            PreviewImage = null;
+        }
     }
 
     private void EnsureTagger()
@@ -283,12 +386,10 @@ public partial class MainViewModel : ViewModelBase
 
     private string ResolveModelsRoot()
     {
-        // 1) Env override
         string? env = Environment.GetEnvironmentVariable("BDTM_MODELS_DIR");
         if (!string.IsNullOrWhiteSpace(env) && Directory.Exists(env))
             return Path.GetFullPath(env);
 
-        // 2) Settings
         if (!string.IsNullOrWhiteSpace(_settings.ModelsPath))
         {
             string configured = _settings.ModelsPath;
@@ -298,47 +399,32 @@ public partial class MainViewModel : ViewModelBase
                 return configured;
         }
 
-        // 3) Next to app binary
         string besideApp = Path.Combine(_appDir, "Models");
         if (IsRepoPresent(besideApp, OnnxModelRepo) || Directory.Exists(besideApp))
             return besideApp;
 
-        // 4) Known local caches on this machine (no download)
         string[] candidates =
         {
-            Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "Projects/toolbox/datasets/Tool/sd-image-sorter/data/models/wd14-tagger"),
-            Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "Projects/toolbox/model-train/AnimaLoraStudio/models/wd14"),
         };
 
         foreach (string c in candidates)
         {
-            if (!Directory.Exists(c))
-                continue;
-
-            // layout A: .../wd14-tagger/wd-eva02-large-tagger-v3/{model.onnx}
-            // map into a virtual SmilingWolf layout if needed via symlink-like resolve below
+            if (!Directory.Exists(c)) continue;
             if (IsRepoPresent(c, OnnxModelRepo))
                 return c;
 
-            // layout B: flat model folder names without org
             string flat = Path.Combine(c, OnnxModelRepo.Split('/').Last());
             if (File.Exists(Path.Combine(flat, "model.onnx")) && File.Exists(Path.Combine(flat, "selected_tags.csv")))
             {
-                // Use parent and special-case GetLocalPath? Better: create adapter root with org/repo via temp? 
-                // Simpler: if repo contains '/', also check parent/last-segment and return a synthetic root.
-                // We'll handle flat layout in EnsureTagger by preferring an effective root that already has org/repo
-                // or by rewriting Onnx path resolution here:
-                // Create besideApp symlink tree lazily.
                 TryLinkFlatModelInto(besideApp, OnnxModelRepo, flat);
                 if (IsRepoPresent(besideApp, OnnxModelRepo))
                     return besideApp;
             }
 
-            // layout C: SmilingWolf_wd-eva02-large-tagger-v3
             string underscored = OnnxModelRepo.Replace('/', '_');
             string underPath = Path.Combine(c, underscored);
             if (File.Exists(Path.Combine(underPath, "model.onnx")))
@@ -349,7 +435,6 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
-        // default: create empty Models dir next to app for user to fill
         Directory.CreateDirectory(besideApp);
         return besideApp;
     }
@@ -358,9 +443,7 @@ public partial class MainViewModel : ViewModelBase
     {
         try
         {
-            string dest = Wd14OnnxTaggerService.GetLocalPath(modelsRoot, repo, ".");
-            // GetLocalPath with "." ends with "/." — normalize to directory
-            dest = Path.GetFullPath(Path.Combine(modelsRoot, repo.Replace('/', Path.DirectorySeparatorChar)));
+            string dest = Path.GetFullPath(Path.Combine(modelsRoot, repo.Replace('/', Path.DirectorySeparatorChar)));
             if (Directory.Exists(dest) || File.Exists(dest))
                 return;
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
@@ -369,7 +452,6 @@ public partial class MainViewModel : ViewModelBase
         }
         catch
         {
-            // ignore link failures (permissions); user can copy manually
         }
     }
 
@@ -428,7 +510,14 @@ public partial class MainViewModel : ViewModelBase
         SelectedTag = null;
         if (SelectedImage is null) return;
         foreach (var t in SelectedImage.Data.Tags.Items)
-            CurrentTags.Add(new TagRow { Tag = t.Tag, Weight = t.Weight });
+        {
+            CurrentTags.Add(new TagRow
+            {
+                Tag = t.Tag,
+                Weight = t.Weight,
+                Chinese = _zhLookup.GetChinese(t.Tag),
+            });
+        }
     }
 
     private void ApplyCurrentTagsToModel()
@@ -441,18 +530,17 @@ public partial class MainViewModel : ViewModelBase
         SelectedImage.Data.Tags.SetTags(tags);
     }
 
-    private void RebuildAllTags()
+    private void RebuildGlobalTags()
     {
-        AllTags.Clear();
-        foreach (var tag in _dataset.DataSet.Values
-                     .SelectMany(i => i.Tags.Items.Select(t => t.Tag))
-                     .Where(t => !string.IsNullOrWhiteSpace(t))
-                     .GroupBy(t => t)
-                     .OrderByDescending(g => g.Count())
-                     .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
-                     .Select(g => $"{g.Key} ({g.Count()})"))
+        GlobalTags.Clear();
+        foreach (var item in TagStatistics.Build(_dataset.DataSet.Values, _zhLookup))
         {
-            AllTags.Add(tag);
+            GlobalTags.Add(new TagCountRow
+            {
+                Tag = item.Tag,
+                Count = item.Count,
+                Chinese = item.Chinese,
+            });
         }
     }
 
@@ -464,17 +552,28 @@ public partial class MainViewModel : ViewModelBase
     }
 }
 
-public sealed class ImageListItem
+public partial class ImageListItem : ObservableObject
 {
     public ImageListItem(DatasetManager.DataItem data) => Data = data;
     public DatasetManager.DataItem Data { get; }
     public string Name => Data.Name;
     public string Path => Data.ImageFilePath;
+
+    [ObservableProperty] private Bitmap? thumbnail;
+
     public override string ToString() => Name;
 }
 
 public partial class TagRow : ObservableObject
 {
     [ObservableProperty] private string tag = string.Empty;
+    [ObservableProperty] private string chinese = string.Empty;
     [ObservableProperty] private float weight = 1f;
+}
+
+public partial class TagCountRow : ObservableObject
+{
+    [ObservableProperty] private string tag = string.Empty;
+    [ObservableProperty] private string chinese = string.Empty;
+    [ObservableProperty] private int count;
 }
