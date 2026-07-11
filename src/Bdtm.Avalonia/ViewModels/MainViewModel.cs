@@ -54,6 +54,9 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<ImageListItem> Images { get; }
     public ObservableCollection<TagRow> CurrentTags { get; }
     public ObservableCollection<TagCountRow> GlobalTags { get; }
+    public ObservableCollection<TagRow> FilteredCurrentTags { get; } = new();
+    public ObservableCollection<TagCountRow> FilteredGlobalTags { get; } = new();
+    public ObservableCollection<ImageListItem> SelectedImages { get; } = new();
 
     [ObservableProperty] private ImageListItem? selectedImage;
     [ObservableProperty] private TagRow? selectedTag;
@@ -69,6 +72,12 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private TagWriteMode writeMode = TagWriteMode.AppendNew;
     [ObservableProperty] private Bitmap? previewImage;
     [ObservableProperty] private bool showPaths;
+    [ObservableProperty] private string currentTagFilter = string.Empty;
+    [ObservableProperty] private string globalTagFilter = string.Empty;
+    [ObservableProperty] private double batchProgress;
+    [ObservableProperty] private string batchStatus = string.Empty;
+    [ObservableProperty] private bool isBatchRunning;
+    private CancellationTokenSource? _batchCts;
 
     partial void OnSelectedImageChanged(ImageListItem? value)
     {
@@ -83,6 +92,10 @@ public partial class MainViewModel : ViewModelBase
         foreach (var item in Images)
             item.ShowFullPath = value;
     }
+
+    partial void OnCurrentTagFilterChanged(string value) => ApplyCurrentTagFilter();
+
+    partial void OnGlobalTagFilterChanged(string value) => ApplyGlobalTagFilter();
 
     [RelayCommand]
     private async Task OpenFolderAsync()
@@ -119,9 +132,18 @@ public partial class MainViewModel : ViewModelBase
                 IsBusy = true;
                 StatusText = "正在加载…";
                 Images.Clear();
+                SelectedImages.Clear();
                 CurrentTags.Clear();
                 GlobalTags.Clear();
+                FilteredCurrentTags.Clear();
+                FilteredGlobalTags.Clear();
+                CurrentTagFilter = string.Empty;
+                GlobalTagFilter = string.Empty;
                 SelectedImage = null;
+                SelectedTag = null;
+                SelectedGlobalTag = null;
+                BatchProgress = 0;
+                BatchStatus = string.Empty;
                 var prev = PreviewImage;
                 PreviewImage = null;
                 prev?.Dispose();
@@ -581,6 +603,7 @@ public partial class MainViewModel : ViewModelBase
                 Chinese = _zhLookup.GetChinese(t.Tag),
             });
         }
+        ApplyCurrentTagFilter();
     }
 
     private void ApplyCurrentTagsToModel()
@@ -603,6 +626,233 @@ public partial class MainViewModel : ViewModelBase
                 Tag = item.Tag,
                 Count = item.Count,
                 Chinese = item.Chinese,
+            });
+        }
+        ApplyGlobalTagFilter();
+    }
+
+
+    private void ApplyCurrentTagFilter()
+    {
+        FilteredCurrentTags.Clear();
+        string q = (CurrentTagFilter ?? string.Empty).Trim();
+        foreach (var row in CurrentTags)
+        {
+            if (string.IsNullOrEmpty(q)
+                || row.Tag.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrEmpty(row.Chinese) && row.Chinese.Contains(q, StringComparison.OrdinalIgnoreCase)))
+            {
+                FilteredCurrentTags.Add(row);
+            }
+        }
+    }
+
+    private void ApplyGlobalTagFilter()
+    {
+        FilteredGlobalTags.Clear();
+        string q = (GlobalTagFilter ?? string.Empty).Trim();
+        foreach (var row in GlobalTags)
+        {
+            if (string.IsNullOrEmpty(q)
+                || row.Tag.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrEmpty(row.Chinese) && row.Chinese.Contains(q, StringComparison.OrdinalIgnoreCase)))
+            {
+                FilteredGlobalTags.Add(row);
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void MoveTagUp()
+    {
+        if (SelectedImage is null || SelectedTag is null) return;
+        ApplyCurrentTagsToModel();
+        int idx = SelectedImage.Data.Tags.IndexOf(SelectedTag.Tag);
+        if (idx < 0) return;
+        if (!SelectedImage.Data.Tags.MoveUp(idx)) return;
+        string keep = SelectedTag.Tag;
+        ReloadCurrentTags();
+        SelectedTag = FilteredCurrentTags.FirstOrDefault(r => r.Tag == keep)
+            ?? CurrentTags.FirstOrDefault(r => r.Tag == keep);
+    }
+
+    [RelayCommand]
+    private void MoveTagDown()
+    {
+        if (SelectedImage is null || SelectedTag is null) return;
+        ApplyCurrentTagsToModel();
+        int idx = SelectedImage.Data.Tags.IndexOf(SelectedTag.Tag);
+        if (idx < 0) return;
+        if (!SelectedImage.Data.Tags.MoveDown(idx)) return;
+        string keep = SelectedTag.Tag;
+        ReloadCurrentTags();
+        SelectedTag = FilteredCurrentTags.FirstOrDefault(r => r.Tag == keep)
+            ?? CurrentTags.FirstOrDefault(r => r.Tag == keep);
+    }
+
+    [RelayCommand]
+    private void RemoveSelectedTagRows()
+    {
+        // Single-selection MVP: remove SelectedTag; multi-select can bind same command later.
+        RemoveSelectedTag(SelectedTag);
+    }
+
+    [RelayCommand]
+    private async Task RunOnnxOnSelectedAsync()
+    {
+        var targets = SelectedImages.Count > 0
+            ? SelectedImages.ToList()
+            : (SelectedImage is null ? new List<ImageListItem>() : new List<ImageListItem> { SelectedImage });
+        if (targets.Count == 0)
+        {
+            StatusText = "请先选择一张或多张图片。";
+            return;
+        }
+        await RunOnnxBatchAsync(targets, "选中");
+    }
+
+    public void SetSelectedImages(IEnumerable<ImageListItem> items)
+    {
+        SelectedImages.Clear();
+        foreach (var i in items)
+            SelectedImages.Add(i);
+        if (SelectedImages.Count > 0 && (SelectedImage is null || !SelectedImages.Contains(SelectedImage)))
+            SelectedImage = SelectedImages[^1];
+    }
+
+    [RelayCommand]
+    private async Task RunOnnxOnAllAsync()
+    {
+        if (Images.Count == 0)
+        {
+            StatusText = "请先打开数据集。";
+            return;
+        }
+        await RunOnnxBatchAsync(Images.ToList(), "全部");
+    }
+
+    [RelayCommand]
+    private void CancelBatch()
+    {
+        _batchCts?.Cancel();
+    }
+
+    private async Task RunOnnxBatchAsync(IReadOnlyList<ImageListItem> targets, string modeLabel)
+    {
+        if (IsBusy || IsBatchRunning) return;
+        if (targets.Count == 0)
+        {
+            StatusText = "没有可打标的图片。";
+            return;
+        }
+
+        // If only one target and mode is 选中, reuse single path semantics but with progress.
+        _batchCts?.Cancel();
+        _batchCts = new CancellationTokenSource();
+        var ct = _batchCts.Token;
+
+        try
+        {
+            IsBatchRunning = true;
+            IsBusy = true;
+            BatchProgress = 0;
+            BatchStatus = $"批量 ONNX（{modeLabel}）0/{targets.Count}";
+            StatusText = BatchStatus;
+
+            EnsureTagger();
+            if (_tagger is null)
+            {
+                StatusText = "ONNX 服务未初始化。";
+                return;
+            }
+
+            if (!_tagger.IsModelReady(OnnxModelRepo))
+            {
+                string expected = Wd14OnnxTaggerService.GetLocalPath(_modelsRoot, OnnxModelRepo, Wd14OnnxTaggerService.ModelFileName);
+                StatusText = $"模型文件未找到。期望: {expected}";
+                return;
+            }
+
+            if (!_tagger.IsLoaded || !string.Equals(_tagger.LoadedRepo, OnnxModelRepo, StringComparison.OrdinalIgnoreCase))
+            {
+                StatusText = "正在加载 ONNX 会话…";
+                await Task.Run(() => _tagger.LoadModel(OnnxModelRepo), ct);
+                FlushOnnxLogsToStatus();
+            }
+
+            ProviderText = FormatProviderText(sessionLoaded: true);
+            int done = 0;
+            int okCount = 0;
+            int failCount = 0;
+            var swAll = System.Diagnostics.Stopwatch.StartNew();
+
+            foreach (var imageItem in targets)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!ImageThumbnailLoader.IsRasterImage(imageItem.Path))
+                {
+                    done++;
+                    continue;
+                }
+
+                try
+                {
+                    var result = await Task.Run(
+                        () => _tagger.TagImage(imageItem.Path, GeneralThreshold, CharacterThreshold),
+                        ct);
+                    await RunOnUiAsync(() =>
+                    {
+                        TagWriteService.ApplyTags(imageItem.Data, result.Tags, WriteMode, sortByConfidence: true);
+                        if (ReferenceEquals(SelectedImage, imageItem))
+                            ReloadCurrentTags();
+                    });
+                    okCount++;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    failCount++;
+                    System.Diagnostics.Debug.WriteLine("batch tag fail: " + imageItem.Path + " " + ex.Message);
+                }
+
+                done++;
+                double p = 100.0 * done / targets.Count;
+                await RunOnUiAsync(() =>
+                {
+                    BatchProgress = p;
+                    BatchStatus = $"批量 ONNX（{modeLabel}）{done}/{targets.Count} · 成功 {okCount} · 失败 {failCount}";
+                    StatusText = BatchStatus;
+                });
+            }
+
+            swAll.Stop();
+            await RunOnUiAsync(() =>
+            {
+                RebuildGlobalTags();
+                StatusText = $"批量完成（{modeLabel}）· 成功 {okCount} · 失败 {failCount} · {swAll.ElapsedMilliseconds} ms · {_tagger.ActiveProvider}";
+                ProviderText = FormatProviderText(sessionLoaded: true);
+                BatchProgress = 100;
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            await RunOnUiAsync(() => StatusText = "批量 ONNX 已取消。");
+        }
+        catch (Exception ex)
+        {
+            await RunOnUiAsync(() => StatusText = "批量 ONNX 失败: " + ex.Message);
+            FlushOnnxLogsToStatus();
+            RefreshOnnxStatus();
+        }
+        finally
+        {
+            await RunOnUiAsync(() =>
+            {
+                IsBatchRunning = false;
+                IsBusy = false;
             });
         }
     }

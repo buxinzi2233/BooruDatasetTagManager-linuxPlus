@@ -184,3 +184,15 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 文档：`docs/porting/UI_GAP_AND_PHASE2.md`
 
 测试：Core **21** + Onnx **5**。
+
+
+---
+
+## 10. Phase 3 / P1（效率）— 2026-07-11
+
+用户确认 P0 布局与 CUDA 打标正常后进入：
+
+- [x] 记录 P1 计划（`docs/porting/PHASE3_P1.md`）
+- [x] 标签上移/下移、删除选中
+- [x] 批量 ONNX（当前/多选/全部）+ 进度/取消
+- [x] 当前/全局标签过滤搜索

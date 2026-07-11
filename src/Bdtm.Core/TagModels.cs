@@ -113,6 +113,35 @@ public sealed class TagList
         return true;
     }
 
+    public bool RemoveAt(int index)
+    {
+        if (index < 0 || index >= _items.Count)
+            return false;
+        _items.RemoveAt(index);
+        RaiseChanged();
+        return true;
+    }
+
+    public bool Move(int fromIndex, int toIndex)
+    {
+        if (fromIndex < 0 || fromIndex >= _items.Count)
+            return false;
+        if (toIndex < 0 || toIndex >= _items.Count)
+            return false;
+        if (fromIndex == toIndex)
+            return true;
+
+        var item = _items[fromIndex];
+        _items.RemoveAt(fromIndex);
+        _items.Insert(toIndex, item);
+        RaiseChanged();
+        return true;
+    }
+
+    public bool MoveUp(int index) => index > 0 && Move(index, index - 1);
+
+    public bool MoveDown(int index) => index >= 0 && index < _items.Count - 1 && Move(index, index + 1);
+
     public int RemoveAll(string tag)
     {
         int removed = _items.RemoveAll(i => string.Equals(i.Tag, tag, StringComparison.Ordinal));

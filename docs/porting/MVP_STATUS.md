@@ -16,6 +16,7 @@ Last progress write-up: `docs/porting/PROGRESS.md`（2026-07-11）
 - [x] CUDA fallback reason in UI; ready-vs-session-loaded wording
 - [x] User-verified: dataset edit/save + CUDA tagging works with `run-linux.sh`
 - [x] Phase 2 P0: thumbnails, Chinese column, global tag table, image preview
+- [x] Phase 3 P1: tag reorder, batch ONNX, tag filters
 
 ## Not in MVP (backlog)
 
