@@ -25,4 +25,14 @@ public class OpenAiVisionTaggerTests
         var tags2 = OpenAiVisionTagger.ParseTags("solo, blue eyes", settings);
         Assert.Contains(tags2, t => t.Tag == "blue_eyes");
     }
+
+    [Theory]
+    [InlineData("https://api.openai.com/v1", "https://api.openai.com/v1/chat/completions")]
+    [InlineData("https://api.openai.com/v1/", "https://api.openai.com/v1/chat/completions")]
+    [InlineData("https://example.com/v1/chat/completions", "https://example.com/v1/chat/completions")]
+    [InlineData("https://example.com/v1/chat/completions/", "https://example.com/v1/chat/completions")]
+    public void BuildChatCompletionsUrl_JoinsEndpoint(string endpoint, string expected)
+    {
+        Assert.Equal(expected, OpenAiVisionClient.BuildChatCompletionsUrl(endpoint));
+    }
 }

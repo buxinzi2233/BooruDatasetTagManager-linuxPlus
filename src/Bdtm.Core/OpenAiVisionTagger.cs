@@ -1,6 +1,3 @@
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Bdtm.Core;
@@ -21,27 +18,17 @@ public sealed class LlmTagResult
 }
 
 /// <summary>
-/// Minimal OpenAI-compatible multimodal chat client for vision tagging.
-/// Uses /chat/completions with image_url data URLs (no OpenAI SDK / WinForms).
+/// OpenAI-compatible vision tagger. Uses <see cref="OpenAiVisionClient"/> for chat+image,
+/// then StripThinking + ParseTags (P5.1 behavior).
 /// </summary>
 public sealed class OpenAiVisionTagger : IDisposable
 {
-    private readonly HttpClient _http;
-    private readonly bool _ownsHttp;
+    private readonly OpenAiVisionClient _client;
 
     public OpenAiVisionTagger(LlmSettings settings, HttpClient? http = null)
     {
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        if (http is null)
-        {
-            _http = new HttpClient { Timeout = TimeSpan.FromSeconds(Math.Max(10, settings.TimeoutSeconds)) };
-            _ownsHttp = true;
-        }
-        else
-        {
-            _http = http;
-            _ownsHttp = false;
-        }
+        _client = new OpenAiVisionClient(settings, http);
     }
 
     public LlmSettings Settings { get; }
@@ -60,32 +47,21 @@ public sealed class OpenAiVisionTagger : IDisposable
 
             byte[] bytes = await File.ReadAllBytesAsync(imagePath, ct).ConfigureAwait(false);
             string mime = GuessMime(imagePath);
-            string b64 = Convert.ToBase64String(bytes);
-            string dataUrl = $"data:{mime};base64,{b64}";
 
-            string baseUrl = Settings.Endpoint.TrimEnd('/');
-            if (!baseUrl.EndsWith("/v1", StringComparison.OrdinalIgnoreCase)
-                && !baseUrl.Contains("/chat/completions", StringComparison.OrdinalIgnoreCase))
-            {
-                // allow either .../v1 or full custom root
-            }
-            string url = baseUrl.Contains("/chat/completions", StringComparison.OrdinalIgnoreCase)
-                ? baseUrl
-                : baseUrl + "/chat/completions";
+            OpenAiVisionCompletionResult completion = await _client.CompleteAsync(
+                new OpenAiVisionCompletionRequest
+                {
+                    SystemPrompt = Settings.SystemPrompt ?? string.Empty,
+                    UserPrompt = Settings.UserPrompt ?? string.Empty,
+                    ImageData = bytes,
+                    ContentType = mime,
+                },
+                ct).ConfigureAwait(false);
 
-            string json = BuildRequestJson(dataUrl);
-            using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
-            if (!string.IsNullOrWhiteSpace(Settings.ApiKey))
-                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Settings.ApiKey);
+            if (!completion.Success)
+                return Fail(completion.ErrorMessage ?? "LLM error", sw);
 
-            using var resp = await _http.SendAsync(req, ct).ConfigureAwait(false);
-            string body = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-            if (!resp.IsSuccessStatusCode)
-                return Fail($"HTTP {(int)resp.StatusCode}: {Truncate(body, 400)}", sw);
-
-            string text = ExtractAssistantText(body);
-            text = StripThinking(text).Trim();
+            string text = StripThinking(completion.Text).Trim();
             var tags = ParseTags(text, Settings);
             sw.Stop();
             return new LlmTagResult
@@ -96,88 +72,14 @@ public sealed class OpenAiVisionTagger : IDisposable
                 ElapsedMilliseconds = sw.Elapsed.TotalMilliseconds,
             };
         }
-        catch (OperationCanceledException) { throw; }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             return Fail(ex.Message, sw);
         }
-    }
-
-    private string BuildRequestJson(string dataUrl)
-    {
-        using var stream = new MemoryStream();
-        using (var writer = new Utf8JsonWriter(stream))
-        {
-            writer.WriteStartObject();
-            writer.WriteString("model", Settings.VisionModel);
-            if (Settings.Temperature >= 0)
-                writer.WriteNumber("temperature", Settings.Temperature);
-
-            writer.WritePropertyName("messages");
-            writer.WriteStartArray();
-
-            if (!string.IsNullOrWhiteSpace(Settings.SystemPrompt))
-            {
-                writer.WriteStartObject();
-                writer.WriteString("role", "system");
-                writer.WriteString("content", Settings.SystemPrompt);
-                writer.WriteEndObject();
-            }
-
-            writer.WriteStartObject();
-            writer.WriteString("role", "user");
-            writer.WritePropertyName("content");
-            writer.WriteStartArray();
-
-            writer.WriteStartObject();
-            writer.WriteString("type", "text");
-            writer.WriteString("text", Settings.UserPrompt ?? string.Empty);
-            writer.WriteEndObject();
-
-            writer.WriteStartObject();
-            writer.WriteString("type", "image_url");
-            writer.WritePropertyName("image_url");
-            writer.WriteStartObject();
-            writer.WriteString("url", dataUrl);
-            writer.WriteEndObject();
-            writer.WriteEndObject();
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-
-            writer.WriteEndArray();
-            writer.WriteEndObject();
-        }
-        return Encoding.UTF8.GetString(stream.ToArray());
-    }
-
-    private static string ExtractAssistantText(string json)
-    {
-        using var doc = JsonDocument.Parse(json);
-        var root = doc.RootElement;
-        if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
-        {
-            var msg = choices[0].GetProperty("message");
-            if (msg.TryGetProperty("content", out var content))
-            {
-                if (content.ValueKind == JsonValueKind.String)
-                    return content.GetString() ?? string.Empty;
-                // some providers return array content parts
-                if (content.ValueKind == JsonValueKind.Array)
-                {
-                    var sb = new StringBuilder();
-                    foreach (var part in content.EnumerateArray())
-                    {
-                        if (part.TryGetProperty("text", out var text))
-                            sb.Append(text.GetString());
-                        else if (part.ValueKind == JsonValueKind.String)
-                            sb.Append(part.GetString());
-                    }
-                    return sb.ToString();
-                }
-            }
-        }
-        throw new InvalidOperationException("Response missing choices[0].message.content");
     }
 
     public static List<LlmTagItem> ParseTags(string text, LlmSettings settings)
@@ -247,12 +149,5 @@ public sealed class OpenAiVisionTagger : IDisposable
         };
     }
 
-    private static string Truncate(string s, int n) =>
-        string.IsNullOrEmpty(s) ? s : (s.Length <= n ? s : s[..n] + "…");
-
-    public void Dispose()
-    {
-        if (_ownsHttp)
-            _http.Dispose();
-    }
+    public void Dispose() => _client.Dispose();
 }
