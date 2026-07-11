@@ -151,13 +151,17 @@ Running locally creates **Models/** (downloaded ONNX weights), **Cache/** (e.g. 
 
 Images sent for tagging, TAG2NL, or audit go to your configured endpoint. API settings live in local `settings.json`.
 
-## Linux MVP (work in progress)
+## Linux native (Avalonia)
 
-Cross-platform port lives under `src/Bdtm.*` + Avalonia UI.
+Branch [`feature/avalonia-linux-mvp`](https://github.com/buxinzi2233/BooruDatasetTagManager-linuxPlus/tree/feature/avalonia-linux-mvp) · [PR #1](https://github.com/buxinzi2233/BooruDatasetTagManager-linuxPlus/pull/1).
 
 ```bash
 ./scripts/build-linux.sh
 ./scripts/publish-linux.sh
+./scripts/run-linux.sh   # preferred (CUDA libs + ~/.local/share/bdtm/Models)
 ```
 
-See `docs/porting/` and Chinese notes in `README_zh_CN.md`.
+- Settings: `~/.config/bdtm/settings.json`
+- Models: download in-app (ONNX tab) or place under `~/.local/share/bdtm/Models/<org>/<repo>/`
+- Roadmap: `docs/porting/ROADMAP_REMAINING.md`
+- Full Chinese guide: `README_zh_CN.md` → **Linux 原生版**

@@ -2,7 +2,7 @@
 
 Branch: `feature/avalonia-linux-mvp`  
 Remote: `origin/feature/avalonia-linux-mvp`  
-Latest status: `docs/porting/STATUS_2026-07-11_post_p3.md`
+Latest status: `docs/porting/ROADMAP_REMAINING.md` + post_p3 status
 
 ## Done
 
@@ -23,6 +23,9 @@ Latest status: `docs/porting/STATUS_2026-07-11_post_p3.md`
 - [x] Branch pushed to GitHub
 - [x] Phase 5 P3: video tools (FFmpeg extract/info)
 - [x] Load frame output folder as dataset from video tools
+- [x] Roadmap remaining (`docs/porting/ROADMAP_REMAINING.md`)
+- [x] CI workflow `.github/workflows/linux-build.yml`
+- [x] P4.1 HF/mirror model download (ONNX tab)
 - [x] Tools menu restored (视频/Wiki/设置)
 
 ## Backlog (not done)
@@ -40,9 +43,9 @@ Latest status: `docs/porting/STATUS_2026-07-11_post_p3.md`
 ## Verify
 
 ```bash
-./scripts/build-linux.sh          # Core 32 + Onnx 5
+./scripts/build-linux.sh          # Core tests + Onnx 5 (see build-linux)
 ./scripts/publish-linux.sh
 ./scripts/run-linux.sh            # preferred (CUDA libs + user Models)
 ```
 
-Tests last green: **Core 32 + Onnx 5**.
+Tests last green: **Core tests + Onnx 5 (see build-linux)**.

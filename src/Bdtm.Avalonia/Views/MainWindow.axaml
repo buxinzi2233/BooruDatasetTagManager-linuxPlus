@@ -283,6 +283,22 @@
 
                 <TextBlock Text="{Binding ProviderText}" TextWrapping="Wrap" />
 
+                <TextBlock Opacity="0.8" Text="下载源" />
+                <ComboBox HorizontalAlignment="Stretch"
+                          SelectedIndex="{Binding DownloadSourceIndex}">
+                  <ComboBoxItem Content="hf-mirror.com" Tag="HfMirror" />
+                  <ComboBoxItem Content="huggingface.co" Tag="HuggingFace" />
+                </ComboBox>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="下载模型" Command="{Binding DownloadOnnxModelCommand}" />
+                  <Button Content="取消下载" Command="{Binding CancelDownloadCommand}"
+                          IsVisible="{Binding IsDownloading}" />
+                </StackPanel>
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding DownloadProgress}"
+                             Height="10" IsVisible="{Binding IsDownloading}" />
+                <TextBlock Text="{Binding DownloadStatus}" Opacity="0.85" TextWrapping="Wrap"
+                           IsVisible="{Binding IsDownloading}" />
+
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <Button Content="打标当前" Command="{Binding RunOnnxOnCurrentCommand}" />
                   <Button Content="打标选中" Command="{Binding RunOnnxOnSelectedCommand}" />

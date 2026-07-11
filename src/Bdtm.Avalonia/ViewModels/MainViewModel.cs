@@ -79,6 +79,12 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private double batchProgress;
     [ObservableProperty] private string batchStatus = string.Empty;
     [ObservableProperty] private bool isBatchRunning;
+    [ObservableProperty] private string downloadStatus = string.Empty;
+    [ObservableProperty] private double downloadProgress;
+    [ObservableProperty] private bool isDownloading;
+    [ObservableProperty] private string downloadSourceName = "HfMirror"; // or HuggingFace
+    [ObservableProperty] private int downloadSourceIndex; // 0=HfMirror, 1=HuggingFace
+    private CancellationTokenSource? _downloadCts;
     private CancellationTokenSource? _batchCts;
 
     partial void OnSelectedImageChanged(ImageListItem? value)
@@ -979,6 +985,94 @@ public partial class MainViewModel : ViewModelBase
     private FfmpegLocator CreateFfmpegLocator()
     {
         return new FfmpegLocator(_appDir, _settings.FfmpegPath ?? string.Empty);
+    }
+
+
+    [RelayCommand]
+    private async Task DownloadOnnxModelAsync()
+    {
+        if (IsDownloading || IsBusy) return;
+        if (string.IsNullOrWhiteSpace(OnnxModelRepo))
+        {
+            StatusText = "请先填写模型 repo（例如 SmilingWolf/wd-eva02-large-tagger-v3）。";
+            return;
+        }
+
+        _downloadCts?.Cancel();
+        _downloadCts = new CancellationTokenSource();
+        var ct = _downloadCts.Token;
+        string modelsRoot = ResolveModelsRoot();
+        Directory.CreateDirectory(modelsRoot);
+
+        var source = DownloadSourceIndex == 1
+            ? HuggingFaceDownloadSource.HuggingFace
+            : HuggingFaceDownloadSource.HfMirror;
+        DownloadSourceName = source == HuggingFaceDownloadSource.HuggingFace ? "HuggingFace" : "HfMirror";
+
+        try
+        {
+            IsDownloading = true;
+            DownloadProgress = 0;
+            DownloadStatus = "准备下载…";
+            StatusText = $"下载模型 {OnnxModelRepo}（{source}）→ {modelsRoot}";
+
+            var dl = new HuggingFaceModelDownloader(modelsRoot);
+            if (dl.IsModelReady(OnnxModelRepo))
+            {
+                DownloadProgress = 100;
+                DownloadStatus = "模型已在本地，无需下载。";
+                StatusText = DownloadStatus + " " + dl.GetLocalDirectory(OnnxModelRepo);
+                RefreshOnnxStatus();
+                return;
+            }
+
+            var progress = new Progress<(string file, long downloaded, long? total)>(p =>
+            {
+                string msg;
+                if (p.total is long tot && tot > 0)
+                {
+                    double pct = 100.0 * p.downloaded / tot;
+                    DownloadProgress = Math.Min(100, pct);
+                    msg = $"{p.file}: {p.downloaded / 1048576.0:0.0}/{tot / 1048576.0:0.0} MB ({pct:0.0}%)";
+                }
+                else
+                {
+                    msg = $"{p.file}: {p.downloaded / 1048576.0:0.0} MB";
+                }
+                DownloadStatus = msg;
+                StatusText = msg;
+            });
+
+            await dl.DownloadModelAsync(source, OnnxModelRepo, progress, ct);
+            DownloadProgress = 100;
+            DownloadStatus = "下载完成";
+            StatusText = $"模型就绪: {dl.GetLocalDirectory(OnnxModelRepo)}";
+            _settings.Wd14Tagger.SelectedModelRepo = OnnxModelRepo;
+            _settings.OnnxTaggerLastModelId = OnnxModelRepo;
+            _settings.ModelsPath = modelsRoot;
+            try { _settings.Save(); } catch { /* ignore */ }
+            RefreshOnnxStatus();
+        }
+        catch (OperationCanceledException)
+        {
+            DownloadStatus = "下载已取消";
+            StatusText = DownloadStatus;
+        }
+        catch (Exception ex)
+        {
+            DownloadStatus = "下载失败: " + ex.Message;
+            StatusText = DownloadStatus;
+        }
+        finally
+        {
+            IsDownloading = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelDownload()
+    {
+        _downloadCts?.Cancel();
     }
 
     private static Window? GetMainWindow()
