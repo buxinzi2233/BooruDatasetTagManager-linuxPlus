@@ -36,7 +36,7 @@
       </Grid>
     </Border>
 
-    <Grid ColumnDefinitions="300,*,340" Margin="8">
+    <Grid ColumnDefinitions="300,*,360" Margin="8">
       <!-- Left: dataset with thumbnails -->
       <DockPanel Margin="0,0,8,0">
         <TextBlock DockPanel.Dock="Top" FontWeight="Bold" Margin="0,0,0,6"
@@ -62,46 +62,32 @@
         </ListBox>
       </DockPanel>
 
-      <!-- Center: tags + preview -->
-      <Grid Grid.Column="1" RowDefinitions="*,220" Margin="0,0,8,0">
-        <DockPanel>
-          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
-            <TextBox Width="200" Watermark="新标签" Text="{Binding NewTagText}" />
-            <Button Content="添加" Command="{Binding AddTagCommand}" />
-            <Button Content="删除选中" Command="{Binding RemoveSelectedTagCommand}" CommandParameter="{Binding SelectedTag}" />
-            <Button Content="保存" Command="{Binding SaveCommand}" />
-            <Button Content="ONNX 当前图" Command="{Binding RunOnnxOnCurrentCommand}" />
-          </StackPanel>
-          <DataGrid ItemsSource="{Binding CurrentTags}"
-                    SelectedItem="{Binding SelectedTag}"
-                    AutoGenerateColumns="False"
-                    IsReadOnly="False"
-                    CanUserReorderColumns="False"
-                    CanUserResizeColumns="True"
-                    GridLinesVisibility="Horizontal"
-                    SelectionMode="Single">
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="标签" Binding="{Binding Tag}" Width="2*" />
-              <DataGridTextColumn Header="中文" Binding="{Binding Chinese}" Width="*" IsReadOnly="True" />
-              <DataGridTextColumn Header="权重" Binding="{Binding Weight}" Width="70" />
-            </DataGrid.Columns>
-          </DataGrid>
-        </DockPanel>
-        <Border Grid.Row="1" Margin="0,8,0,0" Background="#252526" CornerRadius="4" Padding="6">
-          <Grid ColumnDefinitions="*,180">
-            <Border Background="#111" CornerRadius="3" ClipToBounds="True">
-              <Image Source="{Binding PreviewImage}" Stretch="Uniform" />
-            </Border>
-            <StackPanel Grid.Column="1" Margin="8,0,0,0" Spacing="4">
-              <TextBlock FontWeight="Bold" Text="预览" />
-              <TextBlock Text="{Binding SelectedImage.Name, FallbackValue=''}" TextWrapping="Wrap" Opacity="0.9" />
-              <TextBlock Text="{Binding SelectedImage.Path, FallbackValue=''}" FontSize="11" Opacity="0.6" TextWrapping="Wrap" />
-            </StackPanel>
-          </Grid>
-        </Border>
-      </Grid>
+      <!-- Center: current image tags only (matches original main work area) -->
+      <DockPanel Grid.Column="1" Margin="0,0,8,0">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+          <TextBox Width="200" Watermark="新标签" Text="{Binding NewTagText}" />
+          <Button Content="添加" Command="{Binding AddTagCommand}" />
+          <Button Content="删除选中" Command="{Binding RemoveSelectedTagCommand}" CommandParameter="{Binding SelectedTag}" />
+          <Button Content="保存" Command="{Binding SaveCommand}" />
+          <Button Content="ONNX 当前图" Command="{Binding RunOnnxOnCurrentCommand}" />
+        </StackPanel>
+        <DataGrid ItemsSource="{Binding CurrentTags}"
+                  SelectedItem="{Binding SelectedTag}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="False"
+                  CanUserReorderColumns="False"
+                  CanUserResizeColumns="True"
+                  GridLinesVisibility="Horizontal"
+                  SelectionMode="Single">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="标签" Binding="{Binding Tag}" Width="2*" />
+            <DataGridTextColumn Header="中文" Binding="{Binding Chinese}" Width="*" IsReadOnly="True" />
+            <DataGridTextColumn Header="权重" Binding="{Binding Weight}" Width="70" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
 
-      <!-- Right: ONNX + global tags table -->
+      <!-- Right: like original side tabs — ONNX compact + 全局标签 / 预览 -->
       <DockPanel Grid.Column="2">
         <Border DockPanel.Dock="Top" Padding="8" Margin="0,0,0,8" Background="#252526" CornerRadius="4">
           <StackPanel Spacing="6">
@@ -127,25 +113,43 @@
             <Button Content="刷新模型状态" Command="{Binding RefreshOnnxStatusUiCommand}" HorizontalAlignment="Left" />
           </StackPanel>
         </Border>
-        <DockPanel>
-          <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
-            <TextBlock FontWeight="Bold" Text="全局标签" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Content="添加到当前" Command="{Binding AddGlobalTagToCurrentCommand}" />
-          </Grid>
-          <DataGrid ItemsSource="{Binding GlobalTags}"
-                    SelectedItem="{Binding SelectedGlobalTag}"
-                    AutoGenerateColumns="False"
-                    IsReadOnly="True"
-                    CanUserResizeColumns="True"
-                    GridLinesVisibility="Horizontal"
-                    SelectionMode="Single">
-            <DataGrid.Columns>
-              <DataGridTextColumn Header="标签" Binding="{Binding Tag}" Width="2*" />
-              <DataGridTextColumn Header="中文" Binding="{Binding Chinese}" Width="*" />
-              <DataGridTextColumn Header="计数" Binding="{Binding Count}" Width="60" />
-            </DataGrid.Columns>
-          </DataGrid>
-        </DockPanel>
+
+        <TabControl>
+          <TabItem Header="全局标签">
+            <DockPanel Margin="0,6,0,0">
+              <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                <TextBlock FontWeight="Bold" Text="全部标签" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Content="添加到当前" Command="{Binding AddGlobalTagToCurrentCommand}" />
+              </Grid>
+              <DataGrid ItemsSource="{Binding GlobalTags}"
+                        SelectedItem="{Binding SelectedGlobalTag}"
+                        AutoGenerateColumns="False"
+                        IsReadOnly="True"
+                        CanUserResizeColumns="True"
+                        GridLinesVisibility="Horizontal"
+                        SelectionMode="Single">
+                <DataGrid.Columns>
+                  <DataGridTextColumn Header="标签" Binding="{Binding Tag}" Width="2*" />
+                  <DataGridTextColumn Header="中文" Binding="{Binding Chinese}" Width="*" />
+                  <DataGridTextColumn Header="计数" Binding="{Binding Count}" Width="60" />
+                </DataGrid.Columns>
+              </DataGrid>
+            </DockPanel>
+          </TabItem>
+
+          <TabItem Header="预览">
+            <DockPanel Margin="0,6,0,0">
+              <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" Spacing="2">
+                <TextBlock Text="{Binding SelectedImage.Name, FallbackValue=''}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SelectedImage.Path, FallbackValue=''}"
+                           FontSize="11" Opacity="0.65" TextWrapping="Wrap" />
+              </StackPanel>
+              <Border Background="#111" CornerRadius="4" ClipToBounds="True" MinHeight="200">
+                <Image Source="{Binding PreviewImage}" Stretch="Uniform" />
+              </Border>
+            </DockPanel>
+          </TabItem>
+        </TabControl>
       </DockPanel>
     </Grid>
   </DockPanel>
