@@ -53,6 +53,8 @@ public class AppSettingsTests : IDisposable
         Assert.Contains("caption", settings.GetTagFilesExtensions());
         Assert.Equal(string.Empty, settings.CharacterTagAuditModel);
         Assert.Equal(10, settings.CharacterTagAuditMinimumCount);
+        Assert.Equal(CharacterTagAuditStyle.Sparse, settings.CharacterTagAuditStyle);
+        Assert.Equal(CharacterTagAuditExecutionMode.Review, settings.CharacterTagAuditExecutionMode);
     }
 
     [Fact]
@@ -173,6 +175,26 @@ public class AppSettingsTests : IDisposable
         var reloaded = AppSettings.Load(_tempRoot);
         Assert.Equal("gpt-4o", reloaded.CharacterTagAuditModel);
         Assert.Equal(12, reloaded.CharacterTagAuditMinimumCount);
+    }
+
+    [Fact]
+    public void CharacterTagAuditStyleAndMode_RoundTrip()
+    {
+        var settings = AppSettings.Load(_tempRoot);
+        Assert.Equal(CharacterTagAuditStyle.Sparse, settings.CharacterTagAuditStyle);
+        Assert.Equal(CharacterTagAuditExecutionMode.Review, settings.CharacterTagAuditExecutionMode);
+
+        settings.CharacterTagAuditStyle = CharacterTagAuditStyle.Full;
+        settings.CharacterTagAuditExecutionMode = CharacterTagAuditExecutionMode.SummaryApply;
+        settings.Save();
+
+        var reloaded = AppSettings.Load(_tempRoot);
+        Assert.Equal(CharacterTagAuditStyle.Full, reloaded.CharacterTagAuditStyle);
+        Assert.Equal(CharacterTagAuditExecutionMode.SummaryApply, reloaded.CharacterTagAuditExecutionMode);
+
+        string json = File.ReadAllText(Path.Combine(_tempRoot, "settings.json"));
+        Assert.Contains("\"CharacterTagAuditStyle\": \"Full\"", json);
+        Assert.Contains("\"CharacterTagAuditExecutionMode\": \"SummaryApply\"", json);
     }
 
     [Fact]

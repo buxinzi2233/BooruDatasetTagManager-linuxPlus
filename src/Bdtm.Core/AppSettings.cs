@@ -60,6 +60,12 @@ public sealed class AppSettings
     /// <summary>Minimum character-tag frequency before audit considers the tag.</summary>
     public int CharacterTagAuditMinimumCount { get; set; } = 10;
 
+    /// <summary>Sparse vs full character-tag audit style preference.</summary>
+    public CharacterTagAuditStyle CharacterTagAuditStyle { get; set; } = CharacterTagAuditStyle.Sparse;
+
+    /// <summary>Review-only vs summary-apply execution mode preference.</summary>
+    public CharacterTagAuditExecutionMode CharacterTagAuditExecutionMode { get; set; } = CharacterTagAuditExecutionMode.Review;
+
     /// <summary>Optional font preference without System.Drawing.</summary>
     public string? FontFamily { get; set; }
 
