@@ -10,6 +10,12 @@ public sealed class OpenAiVisionCompletionRequest
     public string UserPrompt { get; init; } = "";
     public byte[] ImageData { get; init; } = Array.Empty<byte>();
     public string ContentType { get; init; } = "image/jpeg";
+
+    /// <summary>When set, overrides Settings.VisionModel for this call.</summary>
+    public string? Model { get; init; }
+
+    /// <summary>When false, omit image_url part (text-only chat).</summary>
+    public bool IncludeImage { get; init; } = true;
 }
 
 public sealed class OpenAiVisionCompletionResult
@@ -17,6 +23,9 @@ public sealed class OpenAiVisionCompletionResult
     public bool Success { get; init; }
     public string Text { get; init; } = "";
     public string? ErrorMessage { get; init; }
+    public int? InputTokens { get; init; }
+    public int? OutputTokens { get; init; }
+    public int? TotalTokens { get; init; }
 }
 
 /// <summary>
@@ -55,18 +64,26 @@ public sealed class OpenAiVisionClient : IDisposable
         {
             if (string.IsNullOrWhiteSpace(Settings.Endpoint))
                 return Fail("LLM Endpoint 未配置");
-            if (string.IsNullOrWhiteSpace(Settings.VisionModel))
+
+            string model = !string.IsNullOrWhiteSpace(request.Model)
+                ? request.Model.Trim()
+                : (Settings.VisionModel ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(model))
                 return Fail("Vision 模型未配置");
 
             byte[] imageData = request.ImageData ?? Array.Empty<byte>();
+            bool includeImage = request.IncludeImage && imageData.Length > 0;
             string mime = string.IsNullOrWhiteSpace(request.ContentType)
                 ? "image/jpeg"
                 : request.ContentType;
-            string b64 = Convert.ToBase64String(imageData);
-            string dataUrl = $"data:{mime};base64,{b64}";
             string url = BuildChatCompletionsUrl(Settings.Endpoint);
 
-            string json = BuildRequestJson(request.SystemPrompt, request.UserPrompt, dataUrl);
+            string json = BuildRequestJson(
+                model,
+                request.SystemPrompt,
+                request.UserPrompt,
+                includeImage ? imageData : null,
+                mime);
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
             using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
             if (!string.IsNullOrWhiteSpace(Settings.ApiKey))
@@ -78,10 +95,14 @@ public sealed class OpenAiVisionClient : IDisposable
                 return Fail($"HTTP {(int)resp.StatusCode}: {Truncate(body, 400)}");
 
             string text = ExtractAssistantText(body);
+            TryParseUsage(body, out int? inputTokens, out int? outputTokens, out int? totalTokens);
             return new OpenAiVisionCompletionResult
             {
                 Success = true,
                 Text = text,
+                InputTokens = inputTokens,
+                OutputTokens = outputTokens,
+                TotalTokens = totalTokens,
             };
         }
         catch (OperationCanceledException)
@@ -102,13 +123,18 @@ public sealed class OpenAiVisionClient : IDisposable
         return baseUrl + "/chat/completions";
     }
 
-    private string BuildRequestJson(string? systemPrompt, string? userPrompt, string dataUrl)
+    private string BuildRequestJson(
+        string model,
+        string? systemPrompt,
+        string? userPrompt,
+        byte[]? imageData,
+        string mime)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
         {
             writer.WriteStartObject();
-            writer.WriteString("model", Settings.VisionModel);
+            writer.WriteString("model", model);
             if (Settings.Temperature >= 0)
                 writer.WriteNumber("temperature", Settings.Temperature);
 
@@ -125,23 +151,36 @@ public sealed class OpenAiVisionClient : IDisposable
 
             writer.WriteStartObject();
             writer.WriteString("role", "user");
-            writer.WritePropertyName("content");
-            writer.WriteStartArray();
 
-            writer.WriteStartObject();
-            writer.WriteString("type", "text");
-            writer.WriteString("text", userPrompt ?? string.Empty);
-            writer.WriteEndObject();
+            if (imageData is { Length: > 0 })
+            {
+                string b64 = Convert.ToBase64String(imageData);
+                string dataUrl = $"data:{mime};base64,{b64}";
 
-            writer.WriteStartObject();
-            writer.WriteString("type", "image_url");
-            writer.WritePropertyName("image_url");
-            writer.WriteStartObject();
-            writer.WriteString("url", dataUrl);
-            writer.WriteEndObject();
-            writer.WriteEndObject();
+                writer.WritePropertyName("content");
+                writer.WriteStartArray();
 
-            writer.WriteEndArray();
+                writer.WriteStartObject();
+                writer.WriteString("type", "text");
+                writer.WriteString("text", userPrompt ?? string.Empty);
+                writer.WriteEndObject();
+
+                writer.WriteStartObject();
+                writer.WriteString("type", "image_url");
+                writer.WritePropertyName("image_url");
+                writer.WriteStartObject();
+                writer.WriteString("url", dataUrl);
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+
+                writer.WriteEndArray();
+            }
+            else
+            {
+                // Text-only: plain string content (audit TextScreening / Repair).
+                writer.WriteString("content", userPrompt ?? string.Empty);
+            }
+
             writer.WriteEndObject();
 
             writer.WriteEndArray();
@@ -181,6 +220,52 @@ public sealed class OpenAiVisionClient : IDisposable
         }
 
         throw new InvalidOperationException("Response missing choices[0].message.content");
+    }
+
+    private static void TryParseUsage(
+        string json,
+        out int? inputTokens,
+        out int? outputTokens,
+        out int? totalTokens)
+    {
+        inputTokens = null;
+        outputTokens = null;
+        totalTokens = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("usage", out var usage)
+                || usage.ValueKind != JsonValueKind.Object)
+            {
+                return;
+            }
+
+            inputTokens = ReadTokenCount(usage, "prompt_tokens", "input_tokens");
+            outputTokens = ReadTokenCount(usage, "completion_tokens", "output_tokens");
+            totalTokens = ReadTokenCount(usage, "total_tokens");
+        }
+        catch (JsonException)
+        {
+            // usage is optional; ignore malformed usage blocks
+        }
+    }
+
+    private static int? ReadTokenCount(JsonElement usage, params string[] names)
+    {
+        foreach (string name in names)
+        {
+            if (!usage.TryGetProperty(name, out var prop))
+                continue;
+            if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt32(out int n))
+                return n;
+            if (prop.ValueKind == JsonValueKind.String
+                && int.TryParse(prop.GetString(), out int parsed))
+            {
+                return parsed;
+            }
+        }
+
+        return null;
     }
 
     private static OpenAiVisionCompletionResult Fail(string err) =>
