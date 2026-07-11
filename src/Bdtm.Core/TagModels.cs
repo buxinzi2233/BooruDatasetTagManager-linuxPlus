@@ -164,6 +164,19 @@ public sealed class TagList
         RaiseChanged();
     }
 
+    /// <summary>Replace list preserving per-tag weights.</summary>
+    public void SetTags(IEnumerable<(string Tag, float Weight)> tags)
+    {
+        _items.Clear();
+        foreach (var (tag, weight) in tags)
+        {
+            if (string.IsNullOrWhiteSpace(tag))
+                continue;
+            _items.Add(new TagItem(tag.Trim(), weight));
+        }
+        RaiseChanged();
+    }
+
     public TagList Clone()
     {
         var clone = new TagList();

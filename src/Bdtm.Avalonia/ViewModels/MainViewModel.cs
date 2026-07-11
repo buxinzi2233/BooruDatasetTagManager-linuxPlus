@@ -525,7 +525,7 @@ public partial class MainViewModel : ViewModelBase
         if (SelectedImage is null) return;
         var tags = CurrentTags
             .Where(t => !string.IsNullOrWhiteSpace(t.Tag))
-            .Select(t => t.Tag.Trim())
+            .Select(t => (Tag: t.Tag.Trim(), Weight: t.Weight <= 0 ? 1f : t.Weight))
             .ToList();
         SelectedImage.Data.Tags.SetTags(tags);
     }
