@@ -35,6 +35,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int llmTimeoutSeconds = 120;
     [ObservableProperty] private string llmSystemPrompt = string.Empty;
     [ObservableProperty] private string llmUserPrompt = string.Empty;
+    [ObservableProperty] private string llmTag2NlSystemPrompt = string.Empty;
+    [ObservableProperty] private int llmTag2NlConcurrency = 5;
     [ObservableProperty] private string statusMessage = string.Empty;
     [ObservableProperty] private string configPathDisplay = string.Empty;
     [ObservableProperty] private string defaultModelsHint = string.Empty;
@@ -63,6 +65,8 @@ public partial class SettingsViewModel : ViewModelBase
         LlmTimeoutSeconds = _settings.Llm.TimeoutSeconds;
         LlmSystemPrompt = _settings.Llm.SystemPrompt;
         LlmUserPrompt = _settings.Llm.UserPrompt;
+        LlmTag2NlSystemPrompt = _settings.Llm.Tag2NlSystemPrompt;
+        LlmTag2NlConcurrency = _settings.Llm.Tag2NlConcurrency;
         ConfigPathDisplay = AppPaths.SettingsFilePath;
         DefaultModelsHint = AppPaths.DefaultModelsDir;
         StatusMessage = string.Empty;
@@ -98,6 +102,10 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.Llm.TimeoutSeconds = LlmTimeoutSeconds <= 0 ? 120 : LlmTimeoutSeconds;
         _settings.Llm.SystemPrompt = LlmSystemPrompt ?? string.Empty;
         _settings.Llm.UserPrompt = LlmUserPrompt ?? string.Empty;
+        _settings.Llm.Tag2NlSystemPrompt = string.IsNullOrWhiteSpace(LlmTag2NlSystemPrompt)
+            ? LlmDefaults.Tag2NlSystemPrompt
+            : LlmTag2NlSystemPrompt;
+        _settings.Llm.Tag2NlConcurrency = LlmTag2NlConcurrency; // property clamps
         try
         {
             Directory.CreateDirectory(_settings.ModelsPath);

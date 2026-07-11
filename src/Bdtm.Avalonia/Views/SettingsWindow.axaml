@@ -78,6 +78,14 @@
         <TextBox Text="{Binding LlmSystemPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" />
         <TextBlock Opacity="0.8" Text="User Prompt" />
         <TextBox Text="{Binding LlmUserPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
+
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="TAG2NL" Margin="0,16,0,0" />
+        <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                   Text="连接与 Vision 模型同上；下列仅影响标签→自然语言批量生成。" />
+        <TextBlock Opacity="0.8" Text="TAG2NL 系统提示词" />
+        <TextBox Text="{Binding LlmTag2NlSystemPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
+        <TextBlock Opacity="0.8" Text="TAG2NL 并行数 (1–100)" />
+        <NumericUpDown Minimum="1" Maximum="100" Increment="1" Value="{Binding LlmTag2NlConcurrency}" />
       </StackPanel>
     </ScrollViewer>
   </DockPanel>
