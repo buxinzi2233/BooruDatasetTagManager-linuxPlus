@@ -117,6 +117,9 @@ public sealed class AppSettings
             loaded._settingsFile = settings._settingsFile;
             loaded.Wd14Tagger ??= new Wd14TaggerSettings();
             loaded.Llm ??= new LlmSettings();
+            if (string.IsNullOrWhiteSpace(loaded.Llm.Tag2NlSystemPrompt))
+                loaded.Llm.Tag2NlSystemPrompt = LlmDefaults.Tag2NlSystemPrompt;
+            loaded.Llm.Tag2NlConcurrency = Math.Clamp(loaded.Llm.Tag2NlConcurrency, 1, 100);
             loaded.FfmpegPath ??= string.Empty;
             loaded.OnnxTaggerLastModelId ??= string.Empty;
             loaded.ModelsPath ??= string.Empty;
@@ -190,6 +193,8 @@ public sealed class Wd14ModelThresholds
 /// <summary>OpenAI-compatible vision tagging settings.</summary>
 public sealed class LlmSettings
 {
+    private int _tag2NlConcurrency = 5;
+
     public string Endpoint { get; set; } = "https://api.openai.com/v1";
     public string ApiKey { get; set; } = string.Empty;
     public string VisionModel { get; set; } = "gpt-4o-mini";
@@ -201,4 +206,12 @@ public sealed class LlmSettings
     public bool SplitTags { get; set; } = true;
     public string Splitter { get; set; } = ",";
     public float Temperature { get; set; } = 0.2f;
+
+    public string Tag2NlSystemPrompt { get; set; } = LlmDefaults.Tag2NlSystemPrompt;
+
+    public int Tag2NlConcurrency
+    {
+        get => _tag2NlConcurrency;
+        set => _tag2NlConcurrency = Math.Clamp(value, 1, 100);
+    }
 }

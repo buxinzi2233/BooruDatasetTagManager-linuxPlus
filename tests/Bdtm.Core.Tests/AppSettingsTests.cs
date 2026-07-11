@@ -126,4 +126,37 @@ public class AppSettingsTests : IDisposable
         Assert.Equal(new[] { "txt", "caption", "json" }, exts);
         Assert.Equal("txt,caption,json", settings.CaptionFileExtensions);
     }
+
+    [Fact]
+    public void Llm_Tag2NlDefaults_AreNaturalLanguageNotDanbooruTags()
+    {
+        var llm = new LlmSettings();
+        Assert.Equal(5, llm.Tag2NlConcurrency);
+        Assert.Contains("natural language paragraph", llm.Tag2NlSystemPrompt, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("comma-separated English danbooru-style tags only", llm.Tag2NlSystemPrompt);
+        Assert.NotEqual(llm.SystemPrompt, llm.Tag2NlSystemPrompt);
+    }
+
+    [Fact]
+    public void Llm_Tag2NlSettings_RoundTrip()
+    {
+        var settings = AppSettings.Load(_tempRoot);
+        settings.Llm.Tag2NlSystemPrompt = "Custom T2NL prompt for tests.";
+        settings.Llm.Tag2NlConcurrency = 7;
+        settings.Save();
+
+        var reloaded = AppSettings.Load(_tempRoot);
+        Assert.Equal("Custom T2NL prompt for tests.", reloaded.Llm.Tag2NlSystemPrompt);
+        Assert.Equal(7, reloaded.Llm.Tag2NlConcurrency);
+    }
+
+    [Fact]
+    public void Llm_Tag2NlConcurrency_IsClamped()
+    {
+        var llm = new LlmSettings();
+        llm.Tag2NlConcurrency = 0;
+        Assert.Equal(1, llm.Tag2NlConcurrency);
+        llm.Tag2NlConcurrency = 500;
+        Assert.Equal(100, llm.Tag2NlConcurrency);
+    }
 }
