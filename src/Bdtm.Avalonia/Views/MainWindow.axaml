@@ -1,0 +1,96 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Bdtm.Avalonia.ViewModels"
+        xmlns:onnx="using:Bdtm.Onnx"
+        x:Class="Bdtm.Avalonia.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Width="1280" Height="800"
+        MinWidth="900" MinHeight="600"
+        Title="Booru Dataset Tag Manager (Linux MVP)">
+
+  <Design.DataContext>
+    <vm:MainViewModel />
+  </Design.DataContext>
+
+  <DockPanel>
+    <Menu DockPanel.Dock="Top">
+      <MenuItem Header="文件(_F)">
+        <MenuItem Header="打开数据集文件夹…" Command="{Binding OpenFolderCommand}" />
+        <MenuItem Header="保存标签" Command="{Binding SaveCommand}" />
+        <Separator />
+        <MenuItem Header="保存设置" Command="{Binding SaveSettingsCommand}" />
+      </MenuItem>
+      <MenuItem Header="打标(_T)">
+        <MenuItem Header="ONNX 打标当前图" Command="{Binding RunOnnxOnCurrentCommand}" />
+      </MenuItem>
+    </Menu>
+
+    <Border DockPanel.Dock="Bottom" Padding="8,4" Background="#1e1e1e">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding ProviderText}" Margin="12,0,0,0" Opacity="0.8" />
+      </Grid>
+    </Border>
+
+    <Grid ColumnDefinitions="280,*,320" Margin="8">
+      <DockPanel Margin="0,0,8,0">
+        <TextBlock DockPanel.Dock="Top" FontWeight="Bold" Margin="0,0,0,6"
+                   Text="{Binding DatasetPath, StringFormat=数据集: {0}}" TextTrimming="CharacterEllipsis" />
+        <ListBox ItemsSource="{Binding Images}"
+                 SelectedItem="{Binding SelectedImage}"
+                 DisplayMemberBinding="{Binding Name}" />
+      </DockPanel>
+
+      <DockPanel Grid.Column="1" Margin="0,0,8,0">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+          <TextBox Width="220" Watermark="新标签" Text="{Binding NewTagText}" />
+          <Button Content="添加" Command="{Binding AddTagCommand}" />
+          <Button Content="删除选中" Command="{Binding RemoveSelectedTagCommand}" CommandParameter="{Binding SelectedTag}" />
+          <Button Content="保存" Command="{Binding SaveCommand}" />
+          <Button Content="ONNX 当前图" Command="{Binding RunOnnxOnCurrentCommand}" />
+        </StackPanel>
+        <DataGrid ItemsSource="{Binding CurrentTags}"
+                  SelectedItem="{Binding SelectedTag}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="False"
+                  CanUserReorderColumns="False"
+                  CanUserResizeColumns="True"
+                  GridLinesVisibility="Horizontal"
+                  SelectionMode="Single">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="标签" Binding="{Binding Tag}" Width="*" />
+            <DataGridTextColumn Header="权重" Binding="{Binding Weight}" Width="80" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+
+      <DockPanel Grid.Column="2">
+        <Border DockPanel.Dock="Top" Padding="8" Margin="0,0,0,8" Background="#252526" CornerRadius="4">
+          <StackPanel Spacing="6">
+            <TextBlock FontWeight="Bold" Text="ONNX 设置" />
+            <TextBox Watermark="模型 repo" Text="{Binding OnnxModelRepo}" />
+            <Grid ColumnDefinitions="*,8,*">
+              <StackPanel>
+                <TextBlock Text="General 阈值" Opacity="0.8" />
+                <NumericUpDown Minimum="0" Maximum="1" Increment="0.01"
+                               Value="{Binding GeneralThreshold}" FormatString="0.00" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="Character 阈值" Opacity="0.8" />
+                <NumericUpDown Minimum="0" Maximum="1" Increment="0.01"
+                               Value="{Binding CharacterThreshold}" FormatString="0.00" />
+              </StackPanel>
+            </Grid>
+            <ComboBox SelectedItem="{Binding WriteMode}">
+              <onnx:TagWriteMode>AppendNew</onnx:TagWriteMode>
+              <onnx:TagWriteMode>ReplaceAll</onnx:TagWriteMode>
+            </ComboBox>
+            <TextBlock Text="模型目录: &lt;app&gt;/Models/&lt;repo&gt;/" Opacity="0.7" TextWrapping="Wrap" FontSize="11" />
+          </StackPanel>
+        </Border>
+        <TextBlock DockPanel.Dock="Top" FontWeight="Bold" Margin="0,0,0,6" Text="全局标签" />
+        <ListBox ItemsSource="{Binding AllTags}" />
+      </DockPanel>
+    </Grid>
+  </DockPanel>
+</Window>

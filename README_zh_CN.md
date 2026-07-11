@@ -179,3 +179,42 @@ dotnet publish BooruDatasetTagManager\BooruDatasetTagManager.csproj -c Release -
 - `quick_build.bat` — 本地快速打包至 `dist/`（产物不入库；首次构建会自动下载 FFmpeg）
 
 本地运行后，程序目录下会生成 **Models/**（下载的 ONNX 模型）、**Cache/**（如视频缩略图缓存）、**settings.json**（API 与偏好设置）。这些均为本地运行时数据，**不会也不应提交到 Git**；ONNX 模型请在应用内下载。
+
+## Linux MVP（移植中）
+
+本 fork 的跨平台路线在 `feature/avalonia-linux-mvp`：
+
+| 组件 | 路径 |
+|------|------|
+| 领域库 | `src/Bdtm.Core` |
+| ONNX | `src/Bdtm.Onnx`（CUDA 优先，CPU 回退） |
+| UI | `src/Bdtm.Avalonia`（Avalonia 11） |
+
+### 构建与测试
+
+```bash
+# 需要 .NET 8 SDK
+./scripts/build-linux.sh
+```
+
+### 发布
+
+```bash
+./scripts/publish-linux.sh   # 输出 dist/linux-x64
+./dist/linux-x64/Bdtm.Avalonia
+```
+
+### ONNX 模型
+
+将 WD14 模型放到：
+
+```text
+<应用目录>/Models/<org>/<repo>/model.onnx
+<应用目录>/Models/<org>/<repo>/selected_tags.csv
+```
+
+例如：`Models/SmilingWolf/wd-eva02-large-tagger-v3/`。
+
+架构说明见 `docs/porting/ARCHITECTURE.md`，进度见 `docs/porting/MVP_STATUS.md`。
+
+> 原 WinForms 工程仍保留，仅支持 Windows 构建。
