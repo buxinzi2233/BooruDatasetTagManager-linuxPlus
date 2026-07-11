@@ -21,13 +21,14 @@ Latest status: `docs/porting/STATUS_2026-07-11_post_p2.md`
 - [x] User-verified: dataset edit/save + CUDA tagging with `run-linux.sh`
 - [x] P2: XDG config/Models (`AppPaths`), settings window, Wiki popup
 - [x] Branch pushed to GitHub
+- [x] Phase 5 P3: video tools (FFmpeg extract/info)
 
 ## Backlog (not done)
 
 - [ ] Open GitHub PR (link ready)
 - [ ] LLM vision / TAG2NL
 - [ ] Character tag audit wizard
-- [ ] Video tools UI (uses FFmpeg for real)
+- [x] Video tools UI (info + frame extract; convert API ready)
 - [ ] Crop / background removal
 - [ ] PixAI ONNX
 - [ ] Model download UI (HF)
@@ -37,9 +38,9 @@ Latest status: `docs/porting/STATUS_2026-07-11_post_p2.md`
 ## Verify
 
 ```bash
-./scripts/build-linux.sh          # Core 26 + Onnx 5
+./scripts/build-linux.sh          # Core 32 + Onnx 5
 ./scripts/publish-linux.sh
 ./scripts/run-linux.sh            # preferred (CUDA libs + user Models)
 ```
 
-Tests last green: **Core 26 + Onnx 5**.
+Tests last green: **Core 32 + Onnx 5**.

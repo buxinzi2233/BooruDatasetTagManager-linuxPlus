@@ -933,6 +933,44 @@ public partial class MainViewModel : ViewModelBase
         StatusText = $"设置已应用 · Models: {_modelsRoot}";
     }
 
+
+    [RelayCommand]
+    private async Task OpenVideoToolsAsync()
+    {
+        var window = GetMainWindow();
+        if (window is null) return;
+
+        string? initial = null;
+        if (SelectedImage is not null && VideoProcessingService.IsVideoFile(SelectedImage.Path))
+            initial = SelectedImage.Path;
+        else if (SelectedImages.Count > 0)
+        {
+            initial = SelectedImages.Select(i => i.Path).FirstOrDefault(VideoProcessingService.IsVideoFile);
+        }
+
+        var vm = new VideoToolsViewModel(CreateFfmpegLocator, initial);
+        var dlg = new Views.VideoToolsWindow { DataContext = vm };
+        await dlg.ShowDialog(window);
+
+        // If frames were extracted into the open dataset folder, offer reload.
+        if (!string.IsNullOrWhiteSpace(vm.LastOutputDirectory)
+            && !string.IsNullOrWhiteSpace(DatasetPath)
+            && Directory.Exists(DatasetPath)
+            && Path.GetFullPath(vm.LastOutputDirectory!).StartsWith(Path.GetFullPath(DatasetPath), StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText = "抽帧输出在当前数据集目录下。可重新打开文件夹以刷新列表: " + vm.LastOutputDirectory;
+        }
+        else if (!string.IsNullOrWhiteSpace(vm.LastOutputDirectory))
+        {
+            StatusText = "抽帧完成。可用「打开数据集」加载: " + vm.LastOutputDirectory;
+        }
+    }
+
+    private FfmpegLocator CreateFfmpegLocator()
+    {
+        return new FfmpegLocator(_appDir, _settings.FfmpegPath ?? string.Empty);
+    }
+
     private static Window? GetMainWindow()
     {
         if (global::Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

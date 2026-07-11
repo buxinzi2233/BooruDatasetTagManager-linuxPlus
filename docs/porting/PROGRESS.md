@@ -230,3 +230,12 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 
 - 新建 `STATUS_2026-07-11_post_p2.md`  
 - 修正本文与 `MVP_STATUS.md` 中过时项（push、测试数、缩略图/批量已完成）  
+
+
+---
+
+## 14. Phase 5 / P3 — 视频工具（2026-07-11）
+
+- Core 可移植 `VideoProcessingService`（ffprobe 信息 + 抽帧 + 转码）
+- UI：工具 → 视频工具…（按 FPS / 原生 FPS / 全部帧）
+- 依赖系统 FFmpeg；设置页路径生效
