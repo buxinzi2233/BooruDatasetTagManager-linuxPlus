@@ -87,7 +87,7 @@
               <onnx:TagWriteMode>ReplaceAll</onnx:TagWriteMode>
             </ComboBox>
             <TextBlock Text="{Binding ProviderText}" Opacity="0.9" TextWrapping="Wrap" FontSize="12" />
-            <TextBlock Text="首次点「ONNX 当前图」才会把模型加载进内存；启动时「未加载」只表示会话未创建。" Opacity="0.65" TextWrapping="Wrap" FontSize="11" />
+            <TextBlock Text="启动时只检查模型文件是否存在，不会占用显存；第一次点「ONNX 当前图」才创建 CUDA/CPU 会话（之后显示 CUDA/CPU · 已加载）。" Opacity="0.65" TextWrapping="Wrap" FontSize="11" />
             <Button Content="刷新模型状态" Command="{Binding RefreshOnnxStatusCommand}" HorizontalAlignment="Left" />
           </StackPanel>
         </Border>

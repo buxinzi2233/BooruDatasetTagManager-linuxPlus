@@ -389,7 +389,7 @@ public partial class MainViewModel : ViewModelBase
         ProviderText = filesReady
             ? (sessionLoaded
                 ? FormatProviderText(sessionLoaded: true)
-                : "ONNX: 模型文件就绪 · 会话未加载")
+                : "ONNX: 模型已就绪（点「ONNX 当前图」后加载到 GPU/CPU）")
             : "ONNX: 模型文件缺失";
 
         if (prefix is not null && !filesReady)
@@ -402,7 +402,7 @@ public partial class MainViewModel : ViewModelBase
     private string FormatProviderText(bool sessionLoaded)
     {
         if (_tagger is null || !sessionLoaded)
-            return "ONNX: 模型文件就绪 · 会话未加载";
+            return "ONNX: 模型已就绪（点「ONNX 当前图」后加载到 GPU/CPU）";
 
         if (_tagger.ActiveProvider == OnnxExecutionProvider.Cuda)
             return "ONNX: CUDA · 已加载";
