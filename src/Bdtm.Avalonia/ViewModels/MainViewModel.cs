@@ -78,6 +78,12 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnOnnxModelRepoChanged(string value) => RefreshOnnxStatus();
 
+    partial void OnShowPathsChanged(bool value)
+    {
+        foreach (var item in Images)
+            item.ShowFullPath = value;
+    }
+
     [RelayCommand]
     private async Task OpenFolderAsync()
     {
@@ -142,8 +148,9 @@ public partial class MainViewModel : ViewModelBase
                 return;
             }
 
+            bool showPaths = ShowPaths;
             var items = _dataset.GetDataSource()
-                .Select(d => new ImageListItem(d))
+                .Select(d => new ImageListItem(d) { ShowFullPath = showPaths })
                 .ToList();
 
             await RunOnUiAsync(() =>
@@ -616,6 +623,7 @@ public partial class ImageListItem : ObservableObject
     public string Path => Data.ImageFilePath;
 
     [ObservableProperty] private Bitmap? thumbnail;
+    [ObservableProperty] private bool showFullPath;
 
     public override string ToString() => Name;
 }

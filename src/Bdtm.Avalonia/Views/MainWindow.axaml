@@ -52,7 +52,7 @@
                 <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
                   <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" />
                   <TextBlock Text="{Binding Path}"
-                             IsVisible="{Binding $parent[Window].((vm:MainViewModel)DataContext).ShowPaths}"
+                             IsVisible="{Binding ShowFullPath}"
                              Opacity="0.65" FontSize="11" TextTrimming="CharacterEllipsis"
                              ToolTip.Tip="{Binding Path}" />
                 </StackPanel>
