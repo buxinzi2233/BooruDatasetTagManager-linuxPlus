@@ -18,8 +18,8 @@ public partial class PreviewTagRow : ObservableObject
         Chinese = chinese;
         Confidence = confidence;
         ConfidenceText = confidence.ToString("0.0000", CultureInfo.InvariantCulture);
-        _isSelected = isSelected;
         _onSelectionChanged = onSelectionChanged;
+        IsSelected = isSelected;
     }
 
     public string Tag { get; }
