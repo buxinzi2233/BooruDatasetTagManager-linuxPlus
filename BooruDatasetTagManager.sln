@@ -26,6 +26,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{8A37AB2A
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bdtm.Core.Tests", "tests\Bdtm.Core.Tests\Bdtm.Core.Tests.csproj", "{05B7A142-BFA9-4F6E-A86C-777E70F6137D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bdtm.Onnx", "src\Bdtm.Onnx\Bdtm.Onnx.csproj", "{AE5432C4-704D-4B78-B125-D89AA354610B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bdtm.Onnx.Tests", "tests\Bdtm.Onnx.Tests\Bdtm.Onnx.Tests.csproj", "{D4295C42-6CF6-4E20-B8D5-6324A9C98CDB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,6 +52,14 @@ Global
 		{05B7A142-BFA9-4F6E-A86C-777E70F6137D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{05B7A142-BFA9-4F6E-A86C-777E70F6137D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{05B7A142-BFA9-4F6E-A86C-777E70F6137D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE5432C4-704D-4B78-B125-D89AA354610B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE5432C4-704D-4B78-B125-D89AA354610B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE5432C4-704D-4B78-B125-D89AA354610B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE5432C4-704D-4B78-B125-D89AA354610B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4295C42-6CF6-4E20-B8D5-6324A9C98CDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4295C42-6CF6-4E20-B8D5-6324A9C98CDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4295C42-6CF6-4E20-B8D5-6324A9C98CDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4295C42-6CF6-4E20-B8D5-6324A9C98CDB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -58,5 +70,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{660F84E3-2149-47FB-BB4B-9BBFF48AAF9D} = {18453517-E4B5-427F-9CD2-741DC490AE55}
 		{05B7A142-BFA9-4F6E-A86C-777E70F6137D} = {8A37AB2A-4D19-4920-9E67-CDEDC5F9A672}
+		{AE5432C4-704D-4B78-B125-D89AA354610B} = {18453517-E4B5-427F-9CD2-741DC490AE55}
+		{D4295C42-6CF6-4E20-B8D5-6324A9C98CDB} = {8A37AB2A-4D19-4920-9E67-CDEDC5F9A672}
 	EndGlobalSection
 EndGlobal
