@@ -104,42 +104,11 @@
         </DockPanel>
       </Border>
 
-      <!-- CENTER: current tags + vertical tool rail (like original) -->
+      <!-- CENTER: current tags + vertical tool rail on the RIGHT (original) -->
       <Border Grid.Column="1" Margin="4,0" Background="#1e1e1e"
               BorderBrush="#3f3f46" BorderThickness="1" CornerRadius="2">
-        <Grid ColumnDefinitions="44,*">
-          <!-- Side toolbar -->
-          <Border Background="#2d2d30" BorderBrush="#3f3f46" BorderThickness="0,0,1,0">
-            <StackPanel Margin="4,8" Spacing="6" HorizontalAlignment="Center">
-              <Button Width="34" Height="30" Padding="0"
-                      Command="{Binding AddTagCommand}"
-                      ToolTip.Tip="添加标签（使用上方输入框内容）"
-                      Content="+" FontSize="16" FontWeight="Bold" />
-              <Button Width="34" Height="30" Padding="0"
-                      Command="{Binding RemoveSelectedTagRowsCommand}"
-                      ToolTip.Tip="删除选中标签"
-                      Content="×" FontSize="16" />
-              <Button Width="34" Height="30" Padding="0"
-                      Command="{Binding MoveTagUpCommand}"
-                      ToolTip.Tip="上移"
-                      Content="↑" />
-              <Button Width="34" Height="30" Padding="0"
-                      Command="{Binding MoveTagDownCommand}"
-                      ToolTip.Tip="下移"
-                      Content="↓" />
-              <Separator Margin="2,4" />
-              <Button Width="34" Height="30" Padding="0"
-                      Command="{Binding SaveCommand}"
-                      ToolTip.Tip="保存"
-                      Content="S" FontWeight="SemiBold" />
-              <Button Width="34" Height="30" Padding="0"
-                      Command="{Binding RunOnnxOnCurrentCommand}"
-                      ToolTip.Tip="ONNX 打标当前图"
-                      Content="AI" FontSize="11" FontWeight="SemiBold" />
-            </StackPanel>
-          </Border>
-
-          <DockPanel Grid.Column="1">
+        <Grid ColumnDefinitions="*,44">
+          <DockPanel>
             <Border DockPanel.Dock="Top" Padding="8,6" Background="#2d2d30"
                     BorderBrush="#3f3f46" BorderThickness="0,0,0,1">
               <StackPanel Spacing="6">
@@ -169,6 +138,37 @@
               </DataGrid.Columns>
             </DataGrid>
           </DockPanel>
+
+          <!-- Side toolbar sits between center tags and right pane (original) -->
+          <Border Grid.Column="1" Background="#2d2d30" BorderBrush="#3f3f46" BorderThickness="1,0,0,0">
+            <StackPanel Margin="4,8" Spacing="6" HorizontalAlignment="Center">
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding AddTagCommand}"
+                      ToolTip.Tip="添加标签（使用上方输入框内容）"
+                      Content="+" FontSize="16" FontWeight="Bold" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding RemoveSelectedTagRowsCommand}"
+                      ToolTip.Tip="删除选中标签"
+                      Content="×" FontSize="16" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding MoveTagUpCommand}"
+                      ToolTip.Tip="上移"
+                      Content="↑" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding MoveTagDownCommand}"
+                      ToolTip.Tip="下移"
+                      Content="↓" />
+              <Separator Margin="2,4" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding SaveCommand}"
+                      ToolTip.Tip="保存"
+                      Content="S" FontWeight="SemiBold" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding RunOnnxOnCurrentCommand}"
+                      ToolTip.Tip="ONNX 打标当前图"
+                      Content="AI" FontSize="11" FontWeight="SemiBold" />
+            </StackPanel>
+          </Border>
         </Grid>
       </Border>
 
@@ -199,8 +199,10 @@
                     <DataGridTextColumn Header="标签" Binding="{Binding Tag}" Width="2*" MinWidth="70" />
                     <DataGridTextColumn Header="中文" Binding="{Binding Chinese}" Width="*" MinWidth="56" />
                     <!-- Wider fixed count column so header "计数" + sort glyph fit -->
-                    <DataGridTextColumn Header="计数" Binding="{Binding Count}"
-                                        Width="72" MinWidth="72" MaxWidth="96" />
+                    <DataGridTextColumn Header=" 计数 "
+                                        Binding="{Binding Count}"
+                                        Width="80"
+                                        MinWidth="80" />
                   </DataGrid.Columns>
                 </DataGrid>
               </DockPanel>
