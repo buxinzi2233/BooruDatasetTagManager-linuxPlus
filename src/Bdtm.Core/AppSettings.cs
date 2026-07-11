@@ -49,6 +49,8 @@ public sealed class AppSettings
     public bool AutoSort { get; set; } = false;
     public string FfmpegPath { get; set; } = string.Empty;
     public string OnnxTaggerLastModelId { get; set; } = string.Empty;
+    /// <summary>Optional absolute/relative root for ONNX models (contains org/repo folders).</summary>
+    public string ModelsPath { get; set; } = string.Empty;
     public Wd14TaggerSettings Wd14Tagger { get; set; } = new();
 
     /// <summary>Optional font preference without System.Drawing.</summary>
@@ -93,6 +95,7 @@ public sealed class AppSettings
             loaded.Wd14Tagger ??= new Wd14TaggerSettings();
             loaded.FfmpegPath ??= string.Empty;
             loaded.OnnxTaggerLastModelId ??= string.Empty;
+            loaded.ModelsPath ??= string.Empty;
             loaded.Language ??= "zh-CN";
             loaded.SeparatorOnLoad ??= ",";
             loaded.SeparatorOnSave ??= ", ";
