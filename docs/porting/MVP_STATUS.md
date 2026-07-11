@@ -26,6 +26,7 @@ Latest status: `docs/porting/ROADMAP_REMAINING.md` + post_p3 status
 - [x] Roadmap remaining (`docs/porting/ROADMAP_REMAINING.md`)
 - [x] CI workflow `.github/workflows/linux-build.yml`
 - [x] P4.1 HF/mirror model download (ONNX tab)
+- [x] P4.2 single-image ONNX preview/confirm before write
 - [x] Tools menu restored (视频/Wiki/设置)
 
 ## Backlog (not done)

@@ -258,3 +258,11 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 
 - GitHub PR: https://github.com/buxinzi2233/BooruDatasetTagManager-linuxPlus/pull/1  
 - 视频工具「加载为数据集」：关闭对话框后主窗口 `LoadDatasetAsync` 输出目录  
+
+
+---
+
+## 17. P4.1 / P4.2（模型下载 + 单图预览确认）
+
+- ONNX 页下载 HF/hf-mirror 模型  
+- 单图打标前预览勾选写入；批量仍直接写入  

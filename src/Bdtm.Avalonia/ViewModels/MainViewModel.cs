@@ -82,6 +82,8 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string downloadStatus = string.Empty;
     [ObservableProperty] private double downloadProgress;
     [ObservableProperty] private bool isDownloading;
+    /// <summary>When true, single-image ONNX shows preview dialog before write.</summary>
+    [ObservableProperty] private bool confirmOnnxBeforeWrite = true;
     [ObservableProperty] private string downloadSourceName = "HfMirror"; // or HuggingFace
     [ObservableProperty] private int downloadSourceIndex; // 0=HfMirror, 1=HuggingFace
     private CancellationTokenSource? _downloadCts;
@@ -300,13 +302,41 @@ public partial class MainViewModel : ViewModelBase
             }
 
             ProviderText = FormatProviderText(sessionLoaded: true);
+            var imageItem = SelectedImage;
             var result = await Task.Run(() =>
-                _tagger.TagImage(SelectedImage.Data.ImageFilePath, GeneralThreshold, CharacterThreshold));
+                _tagger.TagImage(imageItem.Data.ImageFilePath, GeneralThreshold, CharacterThreshold));
 
-            TagWriteService.ApplyTags(SelectedImage.Data, result.Tags, WriteMode, sortByConfidence: true);
+            IReadOnlyList<TagPrediction> tagsToApply = result.Tags;
+            if (ConfirmOnnxBeforeWrite)
+            {
+                IsBusy = false; // allow dialog interaction
+                var previewVm = new OnnxPreviewViewModel(
+                    imageItem.Name,
+                    result.Tags,
+                    _zhLookup,
+                    WriteMode,
+                    result.ElapsedMilliseconds,
+                    result.Provider);
+                var window = GetMainWindow();
+                if (window is not null)
+                {
+                    var dlg = new Views.OnnxPreviewWindow { DataContext = previewVm };
+                    var applied = await dlg.ShowDialog<bool?>(window);
+                    if (applied != true || !previewVm.Confirmed)
+                    {
+                        StatusText = $"已取消写入 · 推理 {result.Tags.Count} tags · {result.ElapsedMilliseconds:F0} ms · {result.Provider}";
+                        ProviderText = FormatProviderText(sessionLoaded: true);
+                        return;
+                    }
+                    tagsToApply = previewVm.GetSelectedPredictions();
+                }
+                IsBusy = true;
+            }
+
+            TagWriteService.ApplyTags(imageItem.Data, tagsToApply, WriteMode, sortByConfidence: true);
             ReloadCurrentTags();
             RebuildGlobalTags();
-            StatusText = $"打标完成 · {result.Tags.Count} tags · {result.ElapsedMilliseconds:F0} ms · {result.Provider}";
+            StatusText = $"打标完成 · 写入 {tagsToApply.Count}/{result.Tags.Count} tags · {result.ElapsedMilliseconds:F0} ms · {result.Provider}";
             ProviderText = FormatProviderText(sessionLoaded: true);
             if (result.Provider == OnnxExecutionProvider.Cpu && !string.IsNullOrWhiteSpace(_tagger.FallbackReason))
                 StatusText += " | CUDA 回退: " + _tagger.FallbackReason;

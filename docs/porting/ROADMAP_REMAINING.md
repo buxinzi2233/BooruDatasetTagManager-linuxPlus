@@ -41,3 +41,9 @@
 **第 1 波** README + CI → **第 2 波** P4.1 模型下载 → P4.2 预览确认 → **第 3 波** LLM → **第 4 波** AppImage  
 
 协作：Controller / Implementer / QA（见 PHASE4_P2.md）。
+
+
+## 进度更新
+
+- [x] P4.1 模型下载 UI  
+- [x] P4.2 单图 ONNX 预览确认（批量仍直接写；ONNX 页可关预览）  
