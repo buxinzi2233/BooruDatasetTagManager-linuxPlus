@@ -257,10 +257,17 @@
               <StackPanel Spacing="10" MaxWidth="420">
                 <TextBlock FontWeight="SemiBold" FontSize="14" Text="ONNX 自动打标" />
                 <TextBlock Opacity="0.7" TextWrapping="Wrap" FontSize="12"
-                           Text="模型目录：&lt;应用目录&gt;/Models/&lt;org&gt;/&lt;repo&gt;/model.onnx" />
+                           Text="模型目录：~/.local/share/bdtm/Models/&lt;org&gt;/&lt;repo&gt;/" />
+
+                <TextBlock Opacity="0.8" Text="引擎" />
+                <ComboBox SelectedIndex="{Binding OnnxEngineIndex}" HorizontalAlignment="Stretch">
+                  <ComboBoxItem Content="WD14" />
+                  <ComboBoxItem Content="PixAI v0.9" />
+                </ComboBox>
 
                 <TextBlock Opacity="0.8" Text="模型 repo" />
-                <TextBox Text="{Binding OnnxModelRepo}" />
+                <TextBox Text="{Binding OnnxModelRepo}"
+                         Watermark="WD14 repo；PixAI 固定 deepghs/pixai-tagger-v0.9-onnx" />
 
                 <Grid ColumnDefinitions="*,12,*">
                   <StackPanel>

@@ -2,7 +2,7 @@
 
 Branch: `feature/avalonia-linux-mvp`  
 Remote: `origin/feature/avalonia-linux-mvp`  
-Latest status: `docs/porting/STATUS_2026-07-11_latest.md`
+Latest status: `docs/porting/STATUS_2026-07-11_current.md`
 
 ## Done
 
@@ -28,6 +28,7 @@ Latest status: `docs/porting/STATUS_2026-07-11_latest.md`
 - [x] P4.1 HF/mirror model download (ONNX tab)
 - [x] P4.2 single-image ONNX preview/confirm before write
 - [x] P4.4 Wiki disk cache (7d TTL under ~/.local/share/bdtm/cache/wiki)
+- [x] P4.3 PixAI ONNX engine + multi-file download
 - [x] Tools menu restored (视频/Wiki/设置)
 
 ## Backlog (not done)

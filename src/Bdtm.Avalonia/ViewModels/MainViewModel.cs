@@ -25,6 +25,9 @@ public partial class MainViewModel : ViewModelBase
     private AppSettings _settings;
     private ChineseTagLookup _zhLookup = ChineseTagLookup.Empty;
     private Wd14OnnxTaggerService? _tagger;
+    private PixAiOnnxTaggerService? _pixAiTagger;
+    // 0 = WD14, 1 = PixAI
+
     private string _modelsRoot = string.Empty;
     private CancellationTokenSource? _previewCts;
     private int _thumbGen;
@@ -70,6 +73,8 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private double generalThreshold = 0.52;
     [ObservableProperty] private double characterThreshold = 0.85;
     [ObservableProperty] private string onnxModelRepo = "SmilingWolf/wd-eva02-large-tagger-v3";
+    [ObservableProperty] private int onnxEngineIndex; // 0=WD14, 1=PixAI
+    [ObservableProperty] private string onnxEngineLabel = "WD14";
     [ObservableProperty] private TagWriteMode writeMode = TagWriteMode.AppendNew;
     [ObservableProperty] private Bitmap? previewImage;
     [ObservableProperty] private bool showPaths;
@@ -96,6 +101,22 @@ public partial class MainViewModel : ViewModelBase
     }
 
     partial void OnOnnxModelRepoChanged(string value) => RefreshOnnxStatus();
+
+    partial void OnOnnxEngineIndexChanged(int value)
+    {
+        OnnxEngineLabel = value == 1 ? "PixAI" : "WD14";
+        if (value == 1)
+            OnnxModelRepo = PixAiOnnxTaggerService.ModelRepo;
+        else if (string.IsNullOrWhiteSpace(OnnxModelRepo) || OnnxModelRepo.Contains("pixai", StringComparison.OrdinalIgnoreCase))
+            OnnxModelRepo = "SmilingWolf/wd-eva02-large-tagger-v3";
+
+        // Drop loaded sessions when engine switches.
+        _tagger?.Dispose();
+        _tagger = null;
+        _pixAiTagger?.Dispose();
+        _pixAiTagger = null;
+        RefreshOnnxStatus();
+    }
 
     partial void OnShowPathsChanged(bool value)
     {
@@ -279,32 +300,16 @@ public partial class MainViewModel : ViewModelBase
             StatusText = "ONNX 加载/推理中…";
             EnsureTagger();
 
-            if (_tagger is null)
+            if (!IsCurrentOnnxModelReady())
             {
-                StatusText = "ONNX 服务未初始化。";
+                StatusText = CurrentModelMissingHint();
                 RefreshOnnxStatus();
                 return;
             }
 
-            if (!_tagger.IsModelReady(OnnxModelRepo))
-            {
-                string expected = Wd14OnnxTaggerService.GetLocalPath(_modelsRoot, OnnxModelRepo, Wd14OnnxTaggerService.ModelFileName);
-                StatusText = $"模型文件未找到。期望: {expected}";
-                RefreshOnnxStatus();
-                return;
-            }
-
-            if (!_tagger.IsLoaded || !string.Equals(_tagger.LoadedRepo, OnnxModelRepo, StringComparison.OrdinalIgnoreCase))
-            {
-                StatusText = "正在加载 ONNX 会话（首次可能较慢）…";
-                await Task.Run(() => _tagger.LoadModel(OnnxModelRepo));
-                FlushOnnxLogsToStatus();
-            }
-
-            ProviderText = FormatProviderText(sessionLoaded: true);
+            await EnsureOnnxLoadedAsync();
             var imageItem = SelectedImage;
-            var result = await Task.Run(() =>
-                _tagger.TagImage(imageItem.Data.ImageFilePath, GeneralThreshold, CharacterThreshold));
+            var result = await TagWithCurrentEngineAsync(imageItem.Data.ImageFilePath);
 
             IReadOnlyList<TagPrediction> tagsToApply = result.Tags;
             if (ConfirmOnnxBeforeWrite)
@@ -331,9 +336,12 @@ public partial class MainViewModel : ViewModelBase
             ReloadCurrentTags();
             RebuildGlobalTags();
             StatusText = $"打标完成 · 写入 {tagsToApply.Count}/{result.Tags.Count} tags · {result.ElapsedMilliseconds:F0} ms · {result.Provider}";
-            ProviderText = FormatProviderText(sessionLoaded: true);
-            if (result.Provider == OnnxExecutionProvider.Cpu && !string.IsNullOrWhiteSpace(_tagger.FallbackReason))
-                StatusText += " | CUDA 回退: " + _tagger.FallbackReason;
+            ProviderText = IsPixAiEngine
+                ? FormatProviderTextFor(_pixAiTagger!.ActiveProvider, _pixAiTagger.FallbackReason, true)
+                : FormatProviderText(sessionLoaded: true);
+            string? fb = IsPixAiEngine ? _pixAiTagger?.FallbackReason : _tagger?.FallbackReason;
+            if (result.Provider == OnnxExecutionProvider.Cpu && !string.IsNullOrWhiteSpace(fb))
+                StatusText += " | CUDA 回退: " + fb;
         }
         catch (Exception ex)
         {
@@ -355,6 +363,11 @@ public partial class MainViewModel : ViewModelBase
         {
             _tagger.Dispose();
             _tagger = null;
+        }
+        if (_pixAiTagger is not null)
+        {
+            _pixAiTagger.Dispose();
+            _pixAiTagger = null;
         }
         RefreshOnnxStatus(prefix: "刷新");
         StatusText = $"Models: {_modelsRoot} · 配置: {AppPaths.SettingsFilePath} · 中文词表: {_zhLookup.Count}";
@@ -610,15 +623,30 @@ public partial class MainViewModel : ViewModelBase
 
     private void RefreshOnnxStatus(string? prefix = null)
     {
-        bool filesReady = IsRepoPresent(_modelsRoot, OnnxModelRepo);
-        bool sessionLoaded = _tagger?.IsLoaded == true
-            && string.Equals(_tagger.LoadedRepo, OnnxModelRepo, StringComparison.OrdinalIgnoreCase);
+        bool filesReady = IsCurrentOnnxModelReady();
+        bool sessionLoaded = IsPixAiEngine
+            ? (_pixAiTagger?.IsLoaded == true)
+            : (_tagger?.IsLoaded == true && string.Equals(_tagger.LoadedRepo, OnnxModelRepo, StringComparison.OrdinalIgnoreCase));
 
-        ProviderText = filesReady
-            ? (sessionLoaded
-                ? FormatProviderText(sessionLoaded: true)
-                : "ONNX: 模型已就绪（点「ONNX 当前图」后加载到 GPU/CPU）")
-            : "ONNX: 模型文件缺失";
+        if (filesReady)
+        {
+            if (sessionLoaded)
+            {
+                ProviderText = IsPixAiEngine
+                    ? FormatProviderTextFor(_pixAiTagger!.ActiveProvider, _pixAiTagger.FallbackReason, true)
+                    : FormatProviderText(sessionLoaded: true);
+            }
+            else
+            {
+                ProviderText = IsPixAiEngine
+                    ? "ONNX(PixAI): 模型已就绪（点打标后加载）"
+                    : "ONNX(WD14): 模型已就绪（点「ONNX 当前图」后加载到 GPU/CPU）";
+            }
+        }
+        else
+        {
+            ProviderText = IsPixAiEngine ? "ONNX(PixAI): 模型文件缺失" : "ONNX(WD14): 模型文件缺失";
+        }
 
         if (prefix is not null && !filesReady)
         {
@@ -820,28 +848,13 @@ public partial class MainViewModel : ViewModelBase
             BatchStatus = $"批量 ONNX（{modeLabel}）0/{targets.Count}";
             StatusText = BatchStatus;
 
-            EnsureTagger();
-            if (_tagger is null)
+            if (!IsCurrentOnnxModelReady())
             {
-                StatusText = "ONNX 服务未初始化。";
+                StatusText = CurrentModelMissingHint();
                 return;
             }
 
-            if (!_tagger.IsModelReady(OnnxModelRepo))
-            {
-                string expected = Wd14OnnxTaggerService.GetLocalPath(_modelsRoot, OnnxModelRepo, Wd14OnnxTaggerService.ModelFileName);
-                StatusText = $"模型文件未找到。期望: {expected}";
-                return;
-            }
-
-            if (!_tagger.IsLoaded || !string.Equals(_tagger.LoadedRepo, OnnxModelRepo, StringComparison.OrdinalIgnoreCase))
-            {
-                StatusText = "正在加载 ONNX 会话…";
-                await Task.Run(() => _tagger.LoadModel(OnnxModelRepo), ct);
-                FlushOnnxLogsToStatus();
-            }
-
-            ProviderText = FormatProviderText(sessionLoaded: true);
+            await EnsureOnnxLoadedAsync(ct);
             int done = 0;
             int okCount = 0;
             int failCount = 0;
@@ -858,9 +871,7 @@ public partial class MainViewModel : ViewModelBase
 
                 try
                 {
-                    var result = await Task.Run(
-                        () => _tagger.TagImage(imageItem.Path, GeneralThreshold, CharacterThreshold),
-                        ct);
+                    var result = await TagWithCurrentEngineAsync(imageItem.Path, ct);
 
                     IReadOnlyList<TagPrediction> tagsToApply = result.Tags;
                     if (ConfirmOnnxBeforeWrite && targets.Count == 1)
@@ -1060,11 +1071,14 @@ public partial class MainViewModel : ViewModelBase
             StatusText = $"下载模型 {OnnxModelRepo}（{source}）→ {modelsRoot}";
 
             var dl = new HuggingFaceModelDownloader(modelsRoot);
-            if (dl.IsModelReady(OnnxModelRepo))
+            bool ready = IsPixAiEngine
+                ? dl.AreFilesCached(PixAiOnnxTaggerService.ModelRepo, PixAiOnnxTaggerService.RequiredFiles)
+                : dl.IsModelReady(OnnxModelRepo);
+            if (ready)
             {
                 DownloadProgress = 100;
                 DownloadStatus = "模型已在本地，无需下载。";
-                StatusText = DownloadStatus + " " + dl.GetLocalDirectory(OnnxModelRepo);
+                StatusText = DownloadStatus + " " + dl.GetLocalDirectory(IsPixAiEngine ? PixAiOnnxTaggerService.ModelRepo : OnnxModelRepo);
                 RefreshOnnxStatus();
                 return;
             }
@@ -1086,7 +1100,15 @@ public partial class MainViewModel : ViewModelBase
                 StatusText = msg;
             });
 
-            await dl.DownloadModelAsync(source, OnnxModelRepo, progress, ct);
+            if (IsPixAiEngine)
+            {
+                OnnxModelRepo = PixAiOnnxTaggerService.ModelRepo;
+                await dl.DownloadFilesAsync(source, OnnxModelRepo, PixAiOnnxTaggerService.RequiredFiles, progress, ct);
+            }
+            else
+            {
+                await dl.DownloadModelAsync(source, OnnxModelRepo, progress, ct);
+            }
             DownloadProgress = 100;
             DownloadStatus = "下载完成";
             StatusText = $"模型就绪: {dl.GetLocalDirectory(OnnxModelRepo)}";
@@ -1186,6 +1208,89 @@ public partial class MainViewModel : ViewModelBase
 
         // Avalonia 11: InvokeAsync(Func<Task<T>>) returns Task<T>
         return Dispatcher.UIThread.InvokeAsync(ShowCoreAsync);
+    }
+
+
+    private bool IsPixAiEngine => OnnxEngineIndex == 1;
+
+    private bool IsCurrentOnnxModelReady()
+    {
+        if (IsPixAiEngine)
+        {
+            EnsurePixAiTagger();
+            return _pixAiTagger!.IsModelReady();
+        }
+        return IsRepoPresent(_modelsRoot, OnnxModelRepo);
+    }
+
+    private string CurrentModelMissingHint()
+    {
+        if (IsPixAiEngine)
+            return "PixAI 模型文件不完整。请下载: " + PixAiOnnxTaggerService.ModelRepo
+                + "（需 model.onnx/selected_tags.csv/categories.json/preprocess.json/thresholds.csv）→ " + _modelsRoot;
+        return "模型文件未找到。期望: " + Wd14OnnxTaggerService.GetLocalPath(_modelsRoot, OnnxModelRepo, Wd14OnnxTaggerService.ModelFileName);
+    }
+
+    private void EnsurePixAiTagger()
+    {
+        _modelsRoot = ResolveModelsRoot();
+        if (_pixAiTagger is not null) return;
+        var factory = new OnnxSessionFactory(msg =>
+        {
+            _onnxLogs.Enqueue(msg);
+            System.Diagnostics.Debug.WriteLine(msg);
+        });
+        _pixAiTagger = new PixAiOnnxTaggerService(factory, _modelsRoot);
+    }
+
+    private async Task EnsureOnnxLoadedAsync(CancellationToken ct = default)
+    {
+        if (IsPixAiEngine)
+        {
+            EnsurePixAiTagger();
+            if (!_pixAiTagger!.IsLoaded)
+            {
+                StatusText = "正在加载 PixAI ONNX 会话…";
+                await Task.Run(() => _pixAiTagger.LoadModel(), ct);
+                FlushOnnxLogsToStatus();
+            }
+            ProviderText = FormatProviderTextFor(_pixAiTagger.ActiveProvider, _pixAiTagger.FallbackReason, true);
+            return;
+        }
+
+        EnsureTagger();
+        if (_tagger is null)
+            throw new InvalidOperationException("ONNX 服务未初始化。");
+        if (!_tagger.IsLoaded || !string.Equals(_tagger.LoadedRepo, OnnxModelRepo, StringComparison.OrdinalIgnoreCase))
+        {
+            StatusText = "正在加载 WD14 ONNX 会话…";
+            await Task.Run(() => _tagger.LoadModel(OnnxModelRepo), ct);
+            FlushOnnxLogsToStatus();
+        }
+        ProviderText = FormatProviderText(sessionLoaded: true);
+    }
+
+    private async Task<OnnxTagResult> TagWithCurrentEngineAsync(string imagePath, CancellationToken ct = default)
+    {
+        if (IsPixAiEngine)
+        {
+            EnsurePixAiTagger();
+            return await Task.Run(() => _pixAiTagger!.TagImage(imagePath, GeneralThreshold, CharacterThreshold), ct);
+        }
+        EnsureTagger();
+        return await Task.Run(() => _tagger!.TagImage(imagePath, GeneralThreshold, CharacterThreshold), ct);
+    }
+
+    private string FormatProviderTextFor(OnnxExecutionProvider provider, string? fallback, bool sessionLoaded)
+    {
+        string engine = IsPixAiEngine ? "PixAI" : "WD14";
+        if (!sessionLoaded)
+            return $"ONNX({engine}): 模型已就绪（点打标后加载）";
+        if (provider == OnnxExecutionProvider.Cuda)
+            return $"ONNX({engine}): CUDA · 已加载";
+        if (!string.IsNullOrWhiteSpace(fallback))
+            return $"ONNX({engine}): CPU · 已加载（CUDA 不可用: {fallback}）";
+        return $"ONNX({engine}): CPU · 已加载";
     }
 
     private static Window? GetMainWindow()

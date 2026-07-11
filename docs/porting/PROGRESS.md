@@ -275,3 +275,12 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 - Wiki 结果缓存至 `~/.local/share/bdtm/cache/wiki`（TTL 7 天）  
 - 预览窗「选用」列宽修整  
 - 快照：`docs/porting/STATUS_2026-07-11_latest.md`  
+
+
+---
+
+## 19. P4.3 PixAI（2026-07-11）
+
+- `PixAiOnnxTaggerService` + NCHW 预处理  
+- ONNX 页引擎切换 WD14 / PixAI  
+- 下载 PixAI 所需 5 个文件  

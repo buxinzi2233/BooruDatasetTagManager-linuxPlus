@@ -64,13 +64,14 @@ public sealed class HuggingFaceModelDownloader
                 return false;
             if (string.Equals(filename, "model.onnx", StringComparison.OrdinalIgnoreCase))
                 return info.Length >= MinOnnxFileBytes;
-            if (string.Equals(filename, "selected_tags.csv", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(filename, "selected_tags.csv", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(filename, "thresholds.csv", StringComparison.OrdinalIgnoreCase))
             {
                 string first = ReadFirstLine(path);
-                return first.Contains("name", StringComparison.OrdinalIgnoreCase)
-                    || first.Contains("tag", StringComparison.OrdinalIgnoreCase)
-                    || first.Length > 0;
+                return first.Length > 0;
             }
+            if (filename.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                return info.Length > 2 && !LooksLikeHtml(path);
             return info.Length > 0;
         }
         catch
@@ -98,7 +99,22 @@ public sealed class HuggingFaceModelDownloader
         IProgress<(string file, long downloaded, long? total)>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        foreach (string file in new[] { "model.onnx", "selected_tags.csv" })
+        await DownloadFilesAsync(
+            source,
+            repo,
+            new[] { "model.onnx", "selected_tags.csv" },
+            progress,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task DownloadFilesAsync(
+        HuggingFaceDownloadSource source,
+        string repo,
+        IReadOnlyList<string> files,
+        IProgress<(string file, long downloaded, long? total)>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (string file in files)
         {
             if (IsFileCached(repo, file))
             {
@@ -108,6 +124,9 @@ public sealed class HuggingFaceModelDownloader
             await DownloadFileAsync(source, repo, file, progress, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    public bool AreFilesCached(string repo, IEnumerable<string> files) =>
+        files.All(f => IsFileCached(repo, f));
 
     public async Task<string> DownloadFileAsync(
         HuggingFaceDownloadSource source,
