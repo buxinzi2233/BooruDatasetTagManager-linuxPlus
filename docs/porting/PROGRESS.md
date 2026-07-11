@@ -196,3 +196,15 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 - [x] 标签上移/下移、删除选中
 - [x] 批量 ONNX（当前/多选/全部）+ 进度/取消
 - [x] 当前/全局标签过滤搜索
+
+
+---
+
+## 11. 稳定快照（2026-07-11 · 用户确认 UI 正常）
+
+详见 **`docs/porting/STATUS_2026-07-11.md`**。
+
+- HEAD `ec5bf44`，分支较 main **20** 提交  
+- 三栏布局 + 中栏右侧工具条 + 右栏 Tab（全部标签/预览/ONNX）  
+- 测试 Core 23 + Onnx 5 绿  
+- 整体移植约 **50–55%**（日常打标可用）  

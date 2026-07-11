@@ -1,7 +1,7 @@
 # MVP Status
 
 Branch: `feature/avalonia-linux-mvp`  
-Last progress write-up: `docs/porting/PROGRESS.md`（2026-07-11）
+Last progress write-up: `docs/porting/STATUS_2026-07-11.md`（用户确认 UI 正常）
 
 ## Done
 
