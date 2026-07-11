@@ -1,0 +1,37 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Bdtm.Avalonia.ViewModels"
+        x:Class="Bdtm.Avalonia.Views.Tag2NlProgressWindow"
+        x:DataType="vm:Tag2NlProgressViewModel"
+        Width="620" Height="220"
+        MinWidth="520" MinHeight="200"
+        Title="TAG2NL 进度"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        ShowInTaskbar="False">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Bottom"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Margin="0,16,0,0">
+      <Button Content="取消"
+              Command="{Binding CancelCommand}"
+              IsEnabled="{Binding CancelEnabled}"
+              MinWidth="100"
+              Padding="14,7" />
+    </StackPanel>
+
+    <StackPanel Spacing="10">
+      <TextBlock Opacity="0.8" Text="当前文件" />
+      <TextBlock Text="{Binding CurrentFile}"
+                 TextTrimming="CharacterEllipsis"
+                 ToolTip.Tip="{Binding CurrentFile}" />
+      <ProgressBar Minimum="0"
+                   Maximum="100"
+                   Value="{Binding ProgressValue}"
+                   Height="18" />
+      <TextBlock Text="{Binding CountsText}" />
+      <TextBlock Text="{Binding StatusText}" Opacity="0.85" />
+    </StackPanel>
+  </DockPanel>
+</Window>
