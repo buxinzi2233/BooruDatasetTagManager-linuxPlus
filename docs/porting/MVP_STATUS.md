@@ -22,11 +22,12 @@ Latest status: `docs/porting/STATUS_2026-07-11_post_p3.md`
 - [x] P2: XDG config/Models (`AppPaths`), settings window, Wiki popup
 - [x] Branch pushed to GitHub
 - [x] Phase 5 P3: video tools (FFmpeg extract/info)
+- [x] Load frame output folder as dataset from video tools
 - [x] Tools menu restored (视频/Wiki/设置)
 
 ## Backlog (not done)
 
-- [ ] Open GitHub PR (link ready)
+- [x] Open GitHub PR (#1)
 - [ ] LLM vision / TAG2NL
 - [ ] Character tag audit wizard
 - [x] Video tools UI (info + frame extract; convert API ready)

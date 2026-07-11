@@ -18,12 +18,14 @@ public partial class VideoToolsViewModel : ViewModelBase
 {
     private readonly Func<FfmpegLocator> _locatorFactory;
     private readonly string? _initialVideoPath;
+    private readonly Action<string>? _loadDataset;
     private CancellationTokenSource? _cts;
 
-    public VideoToolsViewModel(Func<FfmpegLocator> locatorFactory, string? initialVideoPath = null)
+    public VideoToolsViewModel(Func<FfmpegLocator> locatorFactory, string? initialVideoPath = null, Action<string>? loadDataset = null)
     {
         _locatorFactory = locatorFactory;
         _initialVideoPath = initialVideoPath;
+        _loadDataset = loadDataset;
         ExtractModes = new ObservableCollection<string> { "按 FPS 抽帧", "原生 FPS", "全部帧（慎用）" };
         SelectedExtractMode = ExtractModes[0];
         ImageFormats = new ObservableCollection<string> { "png", "jpg" };
@@ -251,6 +253,28 @@ public partial class VideoToolsViewModel : ViewModelBase
         {
             StatusText = "无法打开目录: " + ex.Message;
         }
+    }
+
+    /// <summary>Ask host main window to open the frame output folder as a dataset.</summary>
+    [RelayCommand]
+    private void LoadOutputAsDataset()
+    {
+        string? dir = LastOutputDirectory ?? OutputDirectory;
+        if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir))
+        {
+            StatusText = "没有可加载的输出目录（请先抽帧）。";
+            return;
+        }
+
+        if (_loadDataset is null)
+        {
+            StatusText = "当前无法回调主窗口加载数据集。";
+            return;
+        }
+
+        _loadDataset(dir);
+        StatusText = "已请求主窗口加载: " + dir;
+        AppendLog(StatusText);
     }
 
     private void AppendLog(string line)

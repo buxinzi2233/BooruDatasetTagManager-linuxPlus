@@ -51,6 +51,8 @@
           <Button Content="开始抽帧" Command="{Binding ExtractCommand}" />
           <Button Content="取消" Command="{Binding CancelCommand}" />
           <Button Content="打开输出目录" Command="{Binding OpenOutputFolderCommand}" />
+          <Button Content="加载为数据集" Command="{Binding LoadOutputAsDatasetCommand}"
+                  ToolTip.Tip="用主窗口打开抽帧输出目录（关闭本对话框后生效）" />
         </StackPanel>
 
         <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />

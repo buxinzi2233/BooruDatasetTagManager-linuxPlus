@@ -948,21 +948,31 @@ public partial class MainViewModel : ViewModelBase
             initial = SelectedImages.Select(i => i.Path).FirstOrDefault(VideoProcessingService.IsVideoFile);
         }
 
-        var vm = new VideoToolsViewModel(CreateFfmpegLocator, initial);
+        string? pendingLoad = null;
+        var vm = new VideoToolsViewModel(
+            CreateFfmpegLocator,
+            initial,
+            loadDataset: path => pendingLoad = path);
         var dlg = new Views.VideoToolsWindow { DataContext = vm };
         await dlg.ShowDialog(window);
 
-        // If frames were extracted into the open dataset folder, offer reload.
+        if (!string.IsNullOrWhiteSpace(pendingLoad) && Directory.Exists(pendingLoad))
+        {
+            StatusText = "正在加载抽帧输出为数据集…";
+            await LoadDatasetAsync(pendingLoad);
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(vm.LastOutputDirectory)
             && !string.IsNullOrWhiteSpace(DatasetPath)
             && Directory.Exists(DatasetPath)
             && Path.GetFullPath(vm.LastOutputDirectory!).StartsWith(Path.GetFullPath(DatasetPath), StringComparison.OrdinalIgnoreCase))
         {
-            StatusText = "抽帧输出在当前数据集目录下。可重新打开文件夹以刷新列表: " + vm.LastOutputDirectory;
+            StatusText = "抽帧输出在当前数据集目录下。可点视频工具内「加载为数据集」或重新打开文件夹: " + vm.LastOutputDirectory;
         }
         else if (!string.IsNullOrWhiteSpace(vm.LastOutputDirectory))
         {
-            StatusText = "抽帧完成。可用「打开数据集」加载: " + vm.LastOutputDirectory;
+            StatusText = "抽帧完成。可在视频工具中点「加载为数据集」: " + vm.LastOutputDirectory;
         }
     }
 

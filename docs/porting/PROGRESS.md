@@ -250,3 +250,11 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 - HEAD `529981f`：工具菜单补全 + P3 视频工具已在远程  
 - 测试 Core 32 + Onnx 5  
 - 整体约 **60–65%**  
+
+
+---
+
+## 16. 后续（PR + 抽帧加载）
+
+- GitHub PR: https://github.com/buxinzi2233/BooruDatasetTagManager-linuxPlus/pull/1  
+- 视频工具「加载为数据集」：关闭对话框后主窗口 `LoadDatasetAsync` 输出目录  

@@ -23,3 +23,9 @@
 - [x] Avalonia `VideoToolsWindow`
 - [x] 菜单 工具 → 视频工具…
 - [x] 测试含 Video 相关用例；全量 Core 测试绿
+
+
+## 后续增量
+
+- [x] 抽帧后「加载为数据集」一键打开输出目录（关闭视频工具窗后主窗口加载）
+- [x] GitHub PR #1
