@@ -35,6 +35,11 @@
                   ToggleType="CheckBox"
                   IsChecked="{Binding ShowPaths, Mode=TwoWay}" />
       </MenuItem>
+      <MenuItem Header="工具(_O)">
+        <MenuItem Header="视频工具…" Command="{Binding OpenVideoToolsCommand}" />
+        <MenuItem Header="标签 Wiki…" Command="{Binding OpenWikiCommand}" />
+        <MenuItem Header="设置…" Command="{Binding OpenSettingsCommand}" />
+      </MenuItem>
     </Menu>
 
     <Border DockPanel.Dock="Bottom" Padding="8,4" Background="#2d2d30" BorderBrush="#3f3f46" BorderThickness="0,1,0,0">
