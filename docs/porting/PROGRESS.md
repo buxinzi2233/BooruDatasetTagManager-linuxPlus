@@ -284,3 +284,11 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 - `PixAiOnnxTaggerService` + NCHW 预处理  
 - ONNX 页引擎切换 WD14 / PixAI  
 - 下载 PixAI 所需 5 个文件  
+
+
+---
+
+## 20. P5.1 LLM 视觉打标（2026-07-11）
+
+- `OpenAiVisionTagger` + `LlmSettings`  
+- 设置页配置；菜单/侧栏 L；可选预览确认  

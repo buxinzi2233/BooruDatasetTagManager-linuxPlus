@@ -61,6 +61,23 @@
         <TextBlock FontWeight="SemiBold" FontSize="15" Text="FFmpeg" />
         <TextBlock Opacity="0.8" Text="FFmpeg 路径（目录或可执行文件，可留空走 PATH）" />
         <TextBox Text="{Binding FfmpegPath}" />
+
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="LLM 视觉打标（OpenAI 兼容）" />
+        <TextBlock Opacity="0.7" FontSize="11" TextWrapping="Wrap"
+                   Text="Endpoint 通常形如 https://api.openai.com/v1 或兼容网关的 /v1 根路径。" />
+        <TextBlock Opacity="0.8" Text="Endpoint" />
+        <TextBox Text="{Binding LlmEndpoint}" />
+        <TextBlock Opacity="0.8" Text="API Key" />
+        <TextBox Text="{Binding LlmApiKey}" PasswordChar="*" />
+        <TextBlock Opacity="0.8" Text="Vision 模型" />
+        <TextBox Text="{Binding LlmVisionModel}" />
+        <TextBlock Opacity="0.8" Text="超时（秒）" />
+        <NumericUpDown Minimum="10" Maximum="3600" Increment="10" Value="{Binding LlmTimeoutSeconds}" />
+        <TextBlock Opacity="0.8" Text="System Prompt" />
+        <TextBox Text="{Binding LlmSystemPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" />
+        <TextBlock Opacity="0.8" Text="User Prompt" />
+        <TextBox Text="{Binding LlmUserPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
       </StackPanel>
     </ScrollViewer>
   </DockPanel>

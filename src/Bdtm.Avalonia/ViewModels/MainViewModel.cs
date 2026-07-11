@@ -1293,6 +1293,77 @@ public partial class MainViewModel : ViewModelBase
         return $"ONNX({engine}): CPU · 已加载";
     }
 
+
+    [RelayCommand]
+    private async Task RunLlmOnCurrentAsync()
+    {
+        if (SelectedImage is null)
+        {
+            StatusText = "请先选择一张图片。";
+            return;
+        }
+        if (IsBusy) return;
+
+        try
+        {
+            IsBusy = true;
+            StatusText = "LLM 视觉打标中…";
+            if (string.IsNullOrWhiteSpace(_settings.Llm.Endpoint) || string.IsNullOrWhiteSpace(_settings.Llm.VisionModel))
+            {
+                StatusText = "请先在设置中配置 LLM Endpoint 与 Vision 模型。";
+                return;
+            }
+
+            var imageItem = SelectedImage;
+            LlmTagResult result;
+            using (var tagger = new OpenAiVisionTagger(_settings.Llm))
+            {
+                result = await tagger.TagImageAsync(imageItem.Data.ImageFilePath);
+            }
+
+            if (!result.Success)
+            {
+                StatusText = "LLM 失败: " + (result.ErrorMessage ?? "unknown");
+                return;
+            }
+
+            var predictions = result.Tags
+                .Select(t => new TagPrediction { Tag = t.Tag, Confidence = t.Confidence })
+                .ToList();
+
+            IReadOnlyList<TagPrediction> tagsToApply = predictions;
+            if (ConfirmOnnxBeforeWrite)
+            {
+                IsBusy = false;
+                var previewDecision = await PromptOnnxPreviewAsync(
+                    imageItem.Name + " (LLM)",
+                    predictions,
+                    result.ElapsedMilliseconds,
+                    OnnxExecutionProvider.Cpu);
+                if (!previewDecision.Apply)
+                {
+                    StatusText = previewDecision.StatusMessage ?? "已取消 LLM 写入。";
+                    return;
+                }
+                tagsToApply = previewDecision.Tags;
+                IsBusy = true;
+            }
+
+            TagWriteService.ApplyTags(imageItem.Data, tagsToApply, WriteMode, sortByConfidence: false);
+            ReloadCurrentTags();
+            RebuildGlobalTags();
+            StatusText = $"LLM 完成 · 写入 {tagsToApply.Count} tags · {result.ElapsedMilliseconds:F0} ms";
+        }
+        catch (Exception ex)
+        {
+            StatusText = "LLM 失败: " + ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     private static Window? GetMainWindow()
     {
         if (global::Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

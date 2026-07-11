@@ -29,12 +29,14 @@ Latest status: `docs/porting/STATUS_2026-07-11_current.md`
 - [x] P4.2 single-image ONNX preview/confirm before write
 - [x] P4.4 Wiki disk cache (7d TTL under ~/.local/share/bdtm/cache/wiki)
 - [x] P4.3 PixAI ONNX engine + multi-file download
+- [x] P5.1 LLM vision tagging (OpenAI-compatible)
 - [x] Tools menu restored (视频/Wiki/设置)
 
 ## Backlog (not done)
 
 - [x] Open GitHub PR (#1)
-- [ ] LLM vision / TAG2NL
+- [x] LLM vision (current image)
+- [ ] TAG2NL
 - [ ] Character tag audit wizard
 - [x] Video tools UI (info + frame extract; convert API ready)
 - [ ] Crop / background removal

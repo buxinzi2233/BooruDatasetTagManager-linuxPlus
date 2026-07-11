@@ -29,6 +29,12 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string onnxModelRepo = string.Empty;
     [ObservableProperty] private double generalThreshold = 0.52;
     [ObservableProperty] private double characterThreshold = 0.85;
+    [ObservableProperty] private string llmEndpoint = string.Empty;
+    [ObservableProperty] private string llmApiKey = string.Empty;
+    [ObservableProperty] private string llmVisionModel = string.Empty;
+    [ObservableProperty] private int llmTimeoutSeconds = 120;
+    [ObservableProperty] private string llmSystemPrompt = string.Empty;
+    [ObservableProperty] private string llmUserPrompt = string.Empty;
     [ObservableProperty] private string statusMessage = string.Empty;
     [ObservableProperty] private string configPathDisplay = string.Empty;
     [ObservableProperty] private string defaultModelsHint = string.Empty;
@@ -51,6 +57,12 @@ public partial class SettingsViewModel : ViewModelBase
             : _settings.Wd14Tagger.SelectedModelRepo;
         GeneralThreshold = _settings.Wd14Tagger.Threshold;
         CharacterThreshold = _settings.Wd14Tagger.CharacterThreshold;
+        LlmEndpoint = _settings.Llm.Endpoint;
+        LlmApiKey = _settings.Llm.ApiKey;
+        LlmVisionModel = _settings.Llm.VisionModel;
+        LlmTimeoutSeconds = _settings.Llm.TimeoutSeconds;
+        LlmSystemPrompt = _settings.Llm.SystemPrompt;
+        LlmUserPrompt = _settings.Llm.UserPrompt;
         ConfigPathDisplay = AppPaths.SettingsFilePath;
         DefaultModelsHint = AppPaths.DefaultModelsDir;
         StatusMessage = string.Empty;
@@ -80,6 +92,12 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.Wd14Tagger.SelectedModelRepo = OnnxModelRepo?.Trim() ?? string.Empty;
         _settings.Wd14Tagger.Threshold = GeneralThreshold;
         _settings.Wd14Tagger.CharacterThreshold = CharacterThreshold;
+        _settings.Llm.Endpoint = (LlmEndpoint ?? string.Empty).Trim();
+        _settings.Llm.ApiKey = LlmApiKey ?? string.Empty;
+        _settings.Llm.VisionModel = (LlmVisionModel ?? string.Empty).Trim();
+        _settings.Llm.TimeoutSeconds = LlmTimeoutSeconds <= 0 ? 120 : LlmTimeoutSeconds;
+        _settings.Llm.SystemPrompt = LlmSystemPrompt ?? string.Empty;
+        _settings.Llm.UserPrompt = LlmUserPrompt ?? string.Empty;
         try
         {
             Directory.CreateDirectory(_settings.ModelsPath);

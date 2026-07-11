@@ -52,6 +52,7 @@ public sealed class AppSettings
     /// <summary>Optional absolute/relative root for ONNX models (contains org/repo folders).</summary>
     public string ModelsPath { get; set; } = string.Empty;
     public Wd14TaggerSettings Wd14Tagger { get; set; } = new();
+    public LlmSettings Llm { get; set; } = new();
 
     /// <summary>Optional font preference without System.Drawing.</summary>
     public string? FontFamily { get; set; }
@@ -115,6 +116,7 @@ public sealed class AppSettings
 
             loaded._settingsFile = settings._settingsFile;
             loaded.Wd14Tagger ??= new Wd14TaggerSettings();
+            loaded.Llm ??= new LlmSettings();
             loaded.FfmpegPath ??= string.Empty;
             loaded.OnnxTaggerLastModelId ??= string.Empty;
             loaded.ModelsPath ??= string.Empty;
@@ -183,4 +185,20 @@ public sealed class Wd14ModelThresholds
 {
     public double Threshold { get; set; }
     public double CharacterThreshold { get; set; }
+}
+
+/// <summary>OpenAI-compatible vision tagging settings.</summary>
+public sealed class LlmSettings
+{
+    public string Endpoint { get; set; } = "https://api.openai.com/v1";
+    public string ApiKey { get; set; } = string.Empty;
+    public string VisionModel { get; set; } = "gpt-4o-mini";
+    public int TimeoutSeconds { get; set; } = 120;
+    public string SystemPrompt { get; set; } =
+        "You are an image tagger for anime/booru datasets. Reply with comma-separated English danbooru-style tags only. No explanations.";
+    public string UserPrompt { get; set; } =
+        "List relevant tags for this image as a comma-separated list.";
+    public bool SplitTags { get; set; } = true;
+    public string Splitter { get; set; } = ",";
+    public float Temperature { get; set; } = 0.2f;
 }
