@@ -134,7 +134,7 @@
               <DataGrid.Columns>
                 <DataGridTextColumn Header="标签" Binding="{Binding Tag}" Width="2*" MinWidth="80" />
                 <DataGridTextColumn Header="中文" Binding="{Binding Chinese}" Width="*" MinWidth="60" IsReadOnly="True" />
-                <DataGridTextColumn Header="权重" Binding="{Binding Weight}" Width="64" MinWidth="56" />
+                <DataGridTextColumn Header=" 权重 " Binding="{Binding Weight}" Width="80" MinWidth="80" />
               </DataGrid.Columns>
             </DataGrid>
           </DockPanel>
