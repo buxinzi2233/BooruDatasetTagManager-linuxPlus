@@ -108,13 +108,18 @@ public partial class MainViewModel : ViewModelBase
     {
         try
         {
-            IsBusy = true;
-            StatusText = "正在加载…";
-            Images.Clear();
-            CurrentTags.Clear();
-            GlobalTags.Clear();
-            SelectedImage = null;
-            PreviewImage = null;
+            await RunOnUiAsync(() =>
+            {
+                IsBusy = true;
+                StatusText = "正在加载…";
+                Images.Clear();
+                CurrentTags.Clear();
+                GlobalTags.Clear();
+                SelectedImage = null;
+                var prev = PreviewImage;
+                PreviewImage = null;
+                prev?.Dispose();
+            });
 
             var options = new DatasetLoadOptions
             {
@@ -129,30 +134,39 @@ public partial class MainViewModel : ViewModelBase
             bool ok = await _dataset.LoadFromFolderAsync(path, options);
             if (!ok)
             {
-                StatusText = "文件夹中没有支持的图片/视频。";
-                DatasetPath = string.Empty;
+                await RunOnUiAsync(() =>
+                {
+                    StatusText = "文件夹中没有支持的图片/视频。";
+                    DatasetPath = string.Empty;
+                });
                 return;
             }
 
-            DatasetPath = path;
-            foreach (var item in _dataset.GetDataSource())
-                Images.Add(new ImageListItem(item));
+            var items = _dataset.GetDataSource()
+                .Select(d => new ImageListItem(d))
+                .ToList();
 
-            RebuildGlobalTags();
-            if (Images.Count > 0)
-                SelectedImage = Images[0];
+            await RunOnUiAsync(() =>
+            {
+                DatasetPath = path;
+                foreach (var item in items)
+                    Images.Add(item);
+                RebuildGlobalTags();
+                if (Images.Count > 0)
+                    SelectedImage = Images[0];
+                StatusText = $"已加载 {Images.Count} 项 · {path}";
+                RefreshOnnxStatus();
+            });
 
-            StatusText = $"已加载 {Images.Count} 项 · {path}";
-            RefreshOnnxStatus();
             _ = LoadThumbnailsAsync();
         }
         catch (Exception ex)
         {
-            StatusText = "加载失败: " + ex.Message;
+            await RunOnUiAsync(() => StatusText = "加载失败: " + ex.Message);
         }
         finally
         {
-            IsBusy = false;
+            await RunOnUiAsync(() => IsBusy = false);
         }
     }
 
@@ -269,7 +283,7 @@ public partial class MainViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void RefreshOnnxStatusCommand()
+    private void RefreshOnnxStatusUi()
     {
         _modelsRoot = ResolveModelsRoot();
         if (_tagger is not null)
@@ -323,6 +337,7 @@ public partial class MainViewModel : ViewModelBase
         int gen = Interlocked.Increment(ref _thumbGen);
         int edge = Math.Clamp(_settings.PreviewSize, 48, 256);
         var snapshot = Images.ToList();
+        // Sequential is safer for memory; yield so UI stays responsive.
         foreach (var item in snapshot)
         {
             if (gen != _thumbGen) return;
@@ -332,9 +347,19 @@ public partial class MainViewModel : ViewModelBase
             try
             {
                 var bmp = await ImageThumbnailLoader.LoadAsync(item.Path, edge);
-                if (gen != _thumbGen) return;
+                if (gen != _thumbGen)
+                {
+                    bmp?.Dispose();
+                    return;
+                }
                 if (bmp is null) continue;
-                await Dispatcher.UIThread.InvokeAsync(() => item.Thumbnail = bmp);
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    var old = item.Thumbnail;
+                    item.Thumbnail = bmp;
+                    old?.Dispose();
+                });
+                await Task.Yield();
             }
             catch
             {
@@ -351,23 +376,54 @@ public partial class MainViewModel : ViewModelBase
 
         if (item is null || !ImageThumbnailLoader.IsRasterImage(item.Path))
         {
-            PreviewImage = null;
+            await RunOnUiAsync(() =>
+            {
+                var prevNull = PreviewImage;
+                PreviewImage = null;
+                prevNull?.Dispose();
+            });
             return;
         }
 
         try
         {
             var bmp = await ImageThumbnailLoader.LoadAsync(item.Path, maxEdge: 720, ct);
-            if (!ct.IsCancellationRequested)
+            if (ct.IsCancellationRequested)
+            {
+                bmp?.Dispose();
+                return;
+            }
+
+            await RunOnUiAsync(() =>
+            {
+                var previous = PreviewImage;
                 PreviewImage = bmp;
+                previous?.Dispose();
+            });
         }
         catch (OperationCanceledException)
         {
         }
         catch
         {
-            PreviewImage = null;
+            await RunOnUiAsync(() =>
+            {
+                var prev = PreviewImage;
+                PreviewImage = null;
+                prev?.Dispose();
+            });
         }
+    }
+
+    private static Task RunOnUiAsync(Action action)
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+        {
+            action();
+            return Task.CompletedTask;
+        }
+
+        return Dispatcher.UIThread.InvokeAsync(action).GetTask();
     }
 
     private void EnsureTagger()

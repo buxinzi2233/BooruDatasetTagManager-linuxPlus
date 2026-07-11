@@ -22,7 +22,7 @@
       </MenuItem>
       <MenuItem Header="打标(_T)">
         <MenuItem Header="ONNX 打标当前图" Command="{Binding RunOnnxOnCurrentCommand}" />
-        <MenuItem Header="刷新 ONNX 状态" Command="{Binding RefreshOnnxStatusCommand}" />
+        <MenuItem Header="刷新 ONNX 状态" Command="{Binding RefreshOnnxStatusUiCommand}" />
       </MenuItem>
       <MenuItem Header="视图(_V)">
         <MenuItem Header="显示完整路径" ToggleType="CheckBox" IsChecked="{Binding ShowPaths}" />
@@ -94,8 +94,8 @@
             </Border>
             <StackPanel Grid.Column="1" Margin="8,0,0,0" Spacing="4">
               <TextBlock FontWeight="Bold" Text="预览" />
-              <TextBlock Text="{Binding SelectedImage.Name}" TextWrapping="Wrap" Opacity="0.9" />
-              <TextBlock Text="{Binding SelectedImage.Path}" FontSize="11" Opacity="0.6" TextWrapping="Wrap" />
+              <TextBlock Text="{Binding SelectedImage.Name, FallbackValue=''}" TextWrapping="Wrap" Opacity="0.9" />
+              <TextBlock Text="{Binding SelectedImage.Path, FallbackValue=''}" FontSize="11" Opacity="0.6" TextWrapping="Wrap" />
             </StackPanel>
           </Grid>
         </Border>
@@ -124,7 +124,7 @@
               <onnx:TagWriteMode>ReplaceAll</onnx:TagWriteMode>
             </ComboBox>
             <TextBlock Text="{Binding ProviderText}" Opacity="0.9" TextWrapping="Wrap" FontSize="12" />
-            <Button Content="刷新模型状态" Command="{Binding RefreshOnnxStatusCommand}" HorizontalAlignment="Left" />
+            <Button Content="刷新模型状态" Command="{Binding RefreshOnnxStatusUiCommand}" HorizontalAlignment="Left" />
           </StackPanel>
         </Border>
         <DockPanel>
