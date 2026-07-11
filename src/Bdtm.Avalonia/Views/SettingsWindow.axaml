@@ -87,6 +87,13 @@
         <NumericUpDown Minimum="1" Maximum="100" Increment="1" Value="{Binding LlmTag2NlConcurrency}" />
         <TextBlock Opacity="0.8" Text="TAG2NL 系统提示词" />
         <TextBox Text="{Binding LlmTag2NlSystemPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
+
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="角色标签审计" />
+        <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                   Text="用于「工具 / 打标 → 角色标签审计…」。留空则回退到上方 Vision 模型。" />
+        <TextBlock Opacity="0.8" Text="审计模型" />
+        <TextBox Text="{Binding CharacterTagAuditModel}" Watermark="留空 = 使用 Vision 模型" />
       </StackPanel>
     </ScrollViewer>
   </DockPanel>

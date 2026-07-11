@@ -30,6 +30,8 @@
         <Separator />
         <MenuItem Header="TAG2NL 整库 caption…" Command="{Binding RunTag2NlCommand}"
                   ToolTip.Tip="标签→自然语言，输出到旁系 _captioned（也在「工具」菜单）" />
+        <MenuItem Header="角色标签审计…" Command="{Binding OpenCharacterTagAuditCommand}"
+                  ToolTip.Tip="基于触发词与参考图审计角色相关标签" />
         <MenuItem Header="刷新 ONNX 状态" Command="{Binding RefreshOnnxStatusUiCommand}" />
       </MenuItem>
       <MenuItem Header="视图(_V)">
@@ -43,6 +45,8 @@
         <MenuItem Header="标签 Wiki…" Command="{Binding OpenWikiCommand}" />
         <MenuItem Header="TAG2NL…" Command="{Binding RunTag2NlCommand}"
                   ToolTip.Tip="整库标签→自然语言 caption，输出到旁系 _captioned 目录" />
+        <MenuItem Header="角色标签审计…" Command="{Binding OpenCharacterTagAuditCommand}"
+                  ToolTip.Tip="基于触发词与参考图审计角色相关标签" />
         <MenuItem Header="设置…" Command="{Binding OpenSettingsCommand}" />
       </MenuItem>
     </Menu>

@@ -1379,6 +1379,122 @@ public partial class MainViewModel : ViewModelBase
         return _dataset.DataSet.Values.Any(i => i.IsModified(sep));
     }
 
+
+    [RelayCommand]
+    private async Task OpenCharacterTagAuditAsync()
+    {
+        if (IsBusy || IsBatchRunning) return;
+        if (string.IsNullOrWhiteSpace(_dataset.DatasetRoot) || _dataset.DataSet.Count == 0)
+        {
+            StatusText = "请先打开数据集文件夹。";
+            return;
+        }
+
+        var window = GetMainWindow();
+        if (window is null) return;
+
+        try
+        {
+            // Flush tag editor; auto-save dirty tags before audit (same as TAG2NL).
+            ApplyCurrentTagsToModel();
+            if (DatasetHasUnsavedChanges())
+            {
+                _dataset.SaveAll();
+                StatusText = "已保存修改，打开角色标签审计…";
+            }
+
+            string auditModel = string.IsNullOrWhiteSpace(_settings.CharacterTagAuditModel)
+                ? _settings.Llm.VisionModel
+                : _settings.CharacterTagAuditModel;
+            if (string.IsNullOrWhiteSpace(auditModel) || !HasValidLlmEndpoint(_settings.Llm))
+            {
+                StatusText = "请先在设置中配置有效的 LLM Endpoint，并填写审计模型或 Vision 模型。";
+                await OpenSettingsAsync();
+                return;
+            }
+
+            IsBusy = true;
+            StatusText = "角色标签审计…";
+
+            async Task<bool> ConfirmAsync(string title, string message)
+            {
+                var dlg = new Window
+                {
+                    Title = title,
+                    Width = 460,
+                    Height = 200,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    CanResize = false,
+                };
+                var ok = false;
+                var panel = new DockPanel { Margin = new global::Avalonia.Thickness(16) };
+                var buttons = new StackPanel
+                {
+                    Orientation = global::Avalonia.Layout.Orientation.Horizontal,
+                    HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Right,
+                    Spacing = 8,
+                };
+                DockPanel.SetDock(buttons, Dock.Bottom);
+                var cancelBtn = new Button { Content = "取消", MinWidth = 80 };
+                var okBtn = new Button { Content = "确定", MinWidth = 80 };
+                cancelBtn.Click += (_, _) => { ok = false; dlg.Close(); };
+                okBtn.Click += (_, _) => { ok = true; dlg.Close(); };
+                buttons.Children.Add(cancelBtn);
+                buttons.Children.Add(okBtn);
+                panel.Children.Add(buttons);
+                panel.Children.Add(new TextBlock
+                {
+                    Text = message,
+                    TextWrapping = global::Avalonia.Media.TextWrapping.Wrap,
+                    VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center,
+                });
+                dlg.Content = panel;
+                await dlg.ShowDialog(window);
+                return ok;
+            }
+
+            void Alert(string message)
+            {
+                StatusText = message;
+            }
+
+            var wizardVm = new CharacterTagAuditWizardViewModel(
+                _dataset,
+                _settings,
+                onApplied: () =>
+                {
+                    ReloadCurrentTags();
+                    RebuildGlobalTags();
+                },
+                confirmAsync: ConfirmAsync,
+                alert: Alert);
+
+            var wizard = new Views.CharacterTagAuditWizardWindow { DataContext = wizardVm };
+            var result = await wizard.ShowDialog<bool?>(window);
+            if (result == true)
+                StatusText = "角色标签审计已应用。";
+            else if (!string.IsNullOrWhiteSpace(wizardVm.StatusMessage))
+                StatusText = wizardVm.StatusMessage;
+            else
+                StatusText = "已关闭角色标签审计。";
+        }
+        catch (Exception ex)
+        {
+            StatusText = "角色标签审计失败: " + ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private static bool HasValidLlmEndpoint(LlmSettings llm)
+    {
+        if (!Uri.TryCreate((llm.Endpoint ?? string.Empty).Trim(), UriKind.Absolute, out var endpoint))
+            return false;
+        return endpoint.Scheme == Uri.UriSchemeHttp || endpoint.Scheme == Uri.UriSchemeHttps;
+    }
+
     [RelayCommand]
     private async Task RunTag2NlAsync()
     {

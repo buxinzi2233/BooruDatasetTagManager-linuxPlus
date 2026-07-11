@@ -37,6 +37,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string llmUserPrompt = string.Empty;
     [ObservableProperty] private string llmTag2NlSystemPrompt = string.Empty;
     [ObservableProperty] private int llmTag2NlConcurrency = 5;
+    [ObservableProperty] private string characterTagAuditModel = string.Empty;
     [ObservableProperty] private string statusMessage = string.Empty;
     [ObservableProperty] private string configPathDisplay = string.Empty;
     [ObservableProperty] private string defaultModelsHint = string.Empty;
@@ -67,6 +68,7 @@ public partial class SettingsViewModel : ViewModelBase
         LlmUserPrompt = _settings.Llm.UserPrompt;
         LlmTag2NlSystemPrompt = _settings.Llm.Tag2NlSystemPrompt;
         LlmTag2NlConcurrency = _settings.Llm.Tag2NlConcurrency;
+        CharacterTagAuditModel = _settings.CharacterTagAuditModel ?? string.Empty;
         ConfigPathDisplay = AppPaths.SettingsFilePath;
         DefaultModelsHint = AppPaths.DefaultModelsDir;
         StatusMessage = string.Empty;
@@ -106,6 +108,7 @@ public partial class SettingsViewModel : ViewModelBase
             ? LlmDefaults.Tag2NlSystemPrompt
             : LlmTag2NlSystemPrompt;
         _settings.Llm.Tag2NlConcurrency = LlmTag2NlConcurrency; // property clamps
+        _settings.CharacterTagAuditModel = (CharacterTagAuditModel ?? string.Empty).Trim();
         try
         {
             Directory.CreateDirectory(_settings.ModelsPath);
