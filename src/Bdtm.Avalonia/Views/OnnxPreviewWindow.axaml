@@ -3,8 +3,8 @@
         xmlns:vm="using:Bdtm.Avalonia.ViewModels"
         x:Class="Bdtm.Avalonia.Views.OnnxPreviewWindow"
         x:DataType="vm:OnnxPreviewViewModel"
-        Width="780" Height="720"
-        MinWidth="620" MinHeight="500"
+        Width="800" Height="720"
+        MinWidth="640" MinHeight="500"
         Title="ONNX 打标预览"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
@@ -38,7 +38,7 @@
       <TextBlock Opacity="0.85" Text="{Binding Summary}" TextWrapping="Wrap" />
       <TextBlock Opacity="0.85" Text="{Binding WriteModeText, StringFormat=写入模式: {0}}" />
       <TextBlock Opacity="0.65" FontSize="12" TextWrapping="Wrap"
-                 Text="左侧勾选 = 写入该标签；点「应用选中」确认。取消则不写入。多图批量仍直接写入。" />
+                 Text="「选用」列勾选 = 写入该标签；点「应用选中」确认。取消则不写入。多图批量仍直接写入。" />
     </StackPanel>
 
     <DataGrid ItemsSource="{Binding Tags}"
@@ -58,12 +58,14 @@
           Plain Header="写入" is clipped by DataGrid header chrome (~sort padding).
           Use a custom header control with fixed width so both glyphs always fit.
         -->
-        <DataGridTemplateColumn Width="52" MinWidth="52" MaxWidth="56" CanUserResize="False">
+        <!-- Wider first column so header 「选用」 fits completely (grow right into tag column). -->
+        <DataGridTemplateColumn Width="88" MinWidth="88" MaxWidth="120" CanUserResize="True">
           <DataGridTemplateColumn.Header>
-            <TextBlock Text="选"
-                       Width="48"
+            <TextBlock Text="选用"
+                       MinWidth="80"
+                       Margin="8,0,8,0"
                        TextAlignment="Center"
-                       HorizontalAlignment="Center"
+                       HorizontalAlignment="Stretch"
                        VerticalAlignment="Center"
                        FontWeight="SemiBold"
                        ToolTip.Tip="勾选后写入该标签" />
@@ -73,8 +75,8 @@
               <CheckBox HorizontalAlignment="Center"
                         VerticalAlignment="Center"
                         IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                        ToolTip.Tip="写入"
-                        Margin="4,0" />
+                        ToolTip.Tip="选用：写入该标签"
+                        Margin="8,0" />
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
