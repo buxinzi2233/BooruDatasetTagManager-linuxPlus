@@ -2,7 +2,7 @@
 
 Branch: `feature/avalonia-linux-mvp`  
 Remote: `origin/feature/avalonia-linux-mvp`  
-Latest status: `docs/porting/STATUS_2026-07-11_post_p2.md`
+Latest status: `docs/porting/STATUS_2026-07-11_post_p3.md`
 
 ## Done
 
@@ -22,6 +22,7 @@ Latest status: `docs/porting/STATUS_2026-07-11_post_p2.md`
 - [x] P2: XDG config/Models (`AppPaths`), settings window, Wiki popup
 - [x] Branch pushed to GitHub
 - [x] Phase 5 P3: video tools (FFmpeg extract/info)
+- [x] Tools menu restored (视频/Wiki/设置)
 
 ## Backlog (not done)
 

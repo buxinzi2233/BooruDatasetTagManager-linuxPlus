@@ -239,3 +239,14 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 - Core 可移植 `VideoProcessingService`（ffprobe 信息 + 抽帧 + 转码）
 - UI：工具 → 视频工具…（按 FPS / 原生 FPS / 全部帧）
 - 依赖系统 FFmpeg；设置页路径生效
+
+
+---
+
+## 15. 状态同步（P3 后 · 2026-07-11）
+
+详见 **`docs/porting/STATUS_2026-07-11_post_p3.md`**。
+
+- HEAD `529981f`：工具菜单补全 + P3 视频工具已在远程  
+- 测试 Core 32 + Onnx 5  
+- 整体约 **60–65%**  
