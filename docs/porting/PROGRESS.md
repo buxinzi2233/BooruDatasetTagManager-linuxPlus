@@ -266,3 +266,12 @@ dotnet run --project tools/OnnxEpProbe -c Release -- \
 
 - ONNX 页下载 HF/hf-mirror 模型  
 - 单图打标前预览勾选写入；批量仍直接写入  
+
+
+---
+
+## 18. P4.4 Wiki 缓存 + 状态记录（2026-07-11）
+
+- Wiki 结果缓存至 `~/.local/share/bdtm/cache/wiki`（TTL 7 天）  
+- 预览窗「选用」列宽修整  
+- 快照：`docs/porting/STATUS_2026-07-11_latest.md`  
