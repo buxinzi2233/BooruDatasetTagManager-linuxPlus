@@ -1758,7 +1758,7 @@ public partial class MainViewModel : ViewModelBase
         {
             AiApiEndpoint = !string.IsNullOrWhiteSpace(_settings.AiApiEndpoint)
                 ? _settings.AiApiEndpoint
-                : "http://127.0.0.1:7866",
+                : "http://127.0.0.1:50051",
         };
         var dlg = new Views.BgRemovalWindow { DataContext = vm };
         var ok = await dlg.ShowDialog<bool?>(window);

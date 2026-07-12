@@ -11,7 +11,7 @@ namespace Bdtm.Avalonia.ViewModels;
 
 public partial class BgRemovalViewModel : ViewModelBase
 {
-    [ObservableProperty] private string aiApiEndpoint = "http://127.0.0.1:7866";
+    [ObservableProperty] private string aiApiEndpoint = "http://127.0.0.1:50051";
     [ObservableProperty] private bool isConnected;
     [ObservableProperty] private List<string> models = new();
     [ObservableProperty] private string? selectedModel;
