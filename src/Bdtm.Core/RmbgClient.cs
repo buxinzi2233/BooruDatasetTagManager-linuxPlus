@@ -49,11 +49,11 @@ public sealed class RmbgClient : IDisposable
     /// <summary>
     /// Verify the server is reachable by calling GET getconfig.
     /// </summary>
-    public async Task<(bool Ok, string? Error)> CheckConnectionAsync()
+    public async Task<(bool Ok, string? Error)> CheckConnectionAsync(CancellationToken ct = default)
     {
         try
         {
-            var response = await _http.GetAsync(_endpoint + "getconfig");
+            var response = await _http.GetAsync(_endpoint + "getconfig", ct);
             response.EnsureSuccessStatusCode();
             return (true, null);
         }
@@ -66,11 +66,11 @@ public sealed class RmbgClient : IDisposable
     /// <summary>
     /// Retrieve available rmbg model names from the server (type == "rmbg2").
     /// </summary>
-    public async Task<List<string>> GetRmbgModelsAsync()
+    public async Task<List<string>> GetRmbgModelsAsync(CancellationToken ct = default)
     {
         try
         {
-            var json = await _http.GetStringAsync(_endpoint + "getconfig");
+            var json = await _http.GetStringAsync(_endpoint + "getconfig", ct);
             var dto = JsonSerializer.Deserialize<ConfigResponseDto>(json);
             // rmbg2 models are registered as Editors on the server
             return dto?.Editors
@@ -87,11 +87,11 @@ public sealed class RmbgClient : IDisposable
     /// Send an image to the server for background removal using the specified model.
     /// Returns the processed image data (PNG RGBA) on success.
     /// </summary>
-    public async Task<RmbgResult> RemoveBackgroundAsync(string imagePath, string modelName)
+    public async Task<RmbgResult> RemoveBackgroundAsync(string imagePath, string modelName, CancellationToken ct = default)
     {
         try
         {
-            var imageBytes = File.ReadAllBytes(imagePath);
+            var imageBytes = await File.ReadAllBytesAsync(imagePath, ct);
             var fileName = Path.GetFileName(imagePath);
 
             var request = new EditImageRequestDto
@@ -110,10 +110,10 @@ public sealed class RmbgClient : IDisposable
             var requestJson = JsonSerializer.Serialize(request);
             var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
 
-            var response = await _http.PostAsync(_endpoint + "editimage", content);
+            var response = await _http.PostAsync(_endpoint + "editimage", content, ct);
             response.EnsureSuccessStatusCode();
 
-            var responseJson = await response.Content.ReadAsStringAsync();
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
             var editResponse = JsonSerializer.Deserialize<EditImageResponseDto>(responseJson);
 
             if (editResponse?.Success == true && editResponse.Image != null)

@@ -69,6 +69,18 @@ public sealed class AppSettings
     /// <summary>AiApiServer endpoint for background removal and other AI operations.</summary>
     public string AiApiEndpoint { get; set; } = "http://127.0.0.1:50051";
 
+    /// <summary>Selected bg removal model as "backendId:modelId"; empty = first available.</summary>
+    public string BgModelChoice { get; set; } = string.Empty;
+
+    /// <summary>HuggingFace download source: "huggingface" or "mirror".</summary>
+    public string BgDataSource { get; set; } = "huggingface";
+
+    /// <summary>Default bg removal output mode for new sessions.</summary>
+    public BgOutputMode BgDefaultOutput { get; set; } = BgOutputMode.SaveAsCopy;
+
+    /// <summary>Whether to create .bdtm-bak backup when overwriting original image.</summary>
+    public bool BgBackupOriginal { get; set; } = true;
+
     /// <summary>Optional font preference without System.Drawing.</summary>
     public string? FontFamily { get; set; }
 
@@ -148,6 +160,8 @@ public sealed class AppSettings
             if (loaded.CharacterTagAuditMinimumCount <= 0)
                 loaded.CharacterTagAuditMinimumCount = 10;
             loaded.AiApiEndpoint ??= "http://127.0.0.1:50051";
+            loaded.BgModelChoice ??= string.Empty;
+            loaded.BgDataSource ??= "huggingface";
             return loaded;
         }
         catch (Exception)
