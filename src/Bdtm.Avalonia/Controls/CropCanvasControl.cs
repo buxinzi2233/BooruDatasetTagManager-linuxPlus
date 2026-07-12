@@ -37,10 +37,14 @@ public class CropCanvasControl : Control
     public static readonly StyledProperty<CropAspectPreset?> AspectPresetProperty =
         AvaloniaProperty.Register<CropCanvasControl, CropAspectPreset?>(nameof(AspectPreset));
 
+    public static readonly StyledProperty<IList<CropRegion>?> SelectedRegionsProperty =
+        AvaloniaProperty.Register<CropCanvasControl, IList<CropRegion>?>(nameof(SelectedRegions));
+
     private bool _dragging;
     private Point _dragStart;
     private Point _dragEnd;
     private INotifyCollectionChanged? _regionsNotify;
+    private INotifyCollectionChanged? _selectedNotify;
 
     public CropCanvasControl()
     {
@@ -86,8 +90,21 @@ public class CropCanvasControl : Control
         set => SetValue(AspectPresetProperty, value);
     }
 
+    /// <summary>Multi-selection for highlight (optional; falls back to <see cref="SelectedRegion"/>).</summary>
+    public IList<CropRegion>? SelectedRegions
+    {
+        get => GetValue(SelectedRegionsProperty);
+        set => SetValue(SelectedRegionsProperty, value);
+    }
+
     /// <summary>Raised when user finishes dragging a new region (image-space rect, pre-clamp).</summary>
     public event Action<CropRect>? RegionDragCompleted;
+
+    /// <summary>
+    /// Raised when user clicks an existing region.
+    /// Second argument is true when Ctrl/Meta is held (toggle multi-select).
+    /// </summary>
+    public event Action<CropRegion, bool>? RegionClicked;
 
     static CropCanvasControl()
     {
@@ -95,6 +112,7 @@ public class CropCanvasControl : Control
             SourceProperty,
             RegionsProperty,
             SelectedRegionProperty,
+            SelectedRegionsProperty,
             ImagePixelWidthProperty,
             ImagePixelHeightProperty,
             AspectPresetProperty);
@@ -104,14 +122,27 @@ public class CropCanvasControl : Control
     {
         base.OnPropertyChanged(change);
 
-        if (change.Property == RegionsProperty)
+        if (change.Property == RegionsProperty || change.Property == SelectedRegionsProperty)
         {
-            if (_regionsNotify is not null)
-                _regionsNotify.CollectionChanged -= OnRegionsChanged;
+            if (change.Property == RegionsProperty)
+            {
+                if (_regionsNotify is not null)
+                    _regionsNotify.CollectionChanged -= OnRegionsChanged;
 
-            _regionsNotify = change.NewValue as INotifyCollectionChanged;
-            if (_regionsNotify is not null)
-                _regionsNotify.CollectionChanged += OnRegionsChanged;
+                _regionsNotify = change.NewValue as INotifyCollectionChanged;
+                if (_regionsNotify is not null)
+                    _regionsNotify.CollectionChanged += OnRegionsChanged;
+            }
+
+            if (change.Property == SelectedRegionsProperty)
+            {
+                if (_selectedNotify is not null)
+                    _selectedNotify.CollectionChanged -= OnRegionsChanged;
+
+                _selectedNotify = change.NewValue as INotifyCollectionChanged;
+                if (_selectedNotify is not null)
+                    _selectedNotify.CollectionChanged += OnRegionsChanged;
+            }
 
             InvalidateVisual();
         }
@@ -191,12 +222,21 @@ public class CropCanvasControl : Control
                 if (screen.IsEmpty)
                     continue;
 
-                bool selected = ReferenceEquals(region, SelectedRegion);
+                bool selected = IsRegionInSelection(region);
                 Color color = Color.FromUInt32(region.DisplayColorArgb);
-                double thickness = selected ? 3 : 2;
+                double thickness = selected ? 3.5 : 2;
                 var pen = new Pen(new SolidColorBrush(color), thickness);
                 var rect = new Rect(screen.X, screen.Y, screen.Width, screen.Height);
-                context.DrawRectangle(null, pen, rect);
+                if (selected)
+                {
+                    // Light fill so multi-selected regions are obvious.
+                    var fill = new SolidColorBrush(Color.FromArgb(48, color.R, color.G, color.B));
+                    context.DrawRectangle(fill, pen, rect);
+                }
+                else
+                {
+                    context.DrawRectangle(null, pen, rect);
+                }
 
                 // Label background
                 var labelBg = new Rect(screen.X, screen.Y, 32, 18);
@@ -250,7 +290,10 @@ public class CropCanvasControl : Control
                 imageW, imageH, viewW, viewH);
             if (hit is not null)
             {
+                bool toggle = e.KeyModifiers.HasFlag(KeyModifiers.Control)
+                              || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
                 SelectedRegion = hit;
+                RegionClicked?.Invoke(hit, toggle);
                 _dragging = false;
                 e.Handled = true;
                 InvalidateVisual();
@@ -258,7 +301,9 @@ public class CropCanvasControl : Control
             }
         }
 
-        SelectedRegion = null;
+        // Starting a new drag clears multi-select via host (RegionDrag / empty press).
+        if (!(e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta)))
+            SelectedRegion = null;
         _dragging = true;
         _dragStart = p;
         _dragEnd = p;
@@ -345,5 +390,21 @@ public class CropCanvasControl : Control
     {
         if (ImagePixelHeight > 0) return ImagePixelHeight;
         return Source?.PixelSize.Height ?? 0;
+    }
+
+    private bool IsRegionInSelection(CropRegion region)
+    {
+        IList<CropRegion>? multi = SelectedRegions;
+        if (multi is not null && multi.Count > 0)
+        {
+            foreach (CropRegion r in multi)
+            {
+                if (ReferenceEquals(r, region))
+                    return true;
+            }
+            return false;
+        }
+
+        return ReferenceEquals(region, SelectedRegion);
     }
 }

@@ -47,6 +47,7 @@ public partial class CropImageWindow : Window
         _loaded = true;
 
         Canvas.RegionDragCompleted += OnRegionDragCompleted;
+        Canvas.RegionClicked += OnRegionClicked;
 
         if (DataContext is not CropImageViewModel vm)
             return;
@@ -77,6 +78,7 @@ public partial class CropImageWindow : Window
     private void OnClosed(object? sender, EventArgs e)
     {
         Canvas.RegionDragCompleted -= OnRegionDragCompleted;
+        Canvas.RegionClicked -= OnRegionClicked;
         if (_vm is not null)
             _vm.PropertyChanged -= OnVmPropertyChanged;
         _vm = null;
@@ -89,6 +91,19 @@ public partial class CropImageWindow : Window
     {
         if (DataContext is CropImageViewModel vm)
             vm.AddRegionFromImageRect(imageRect);
+        SyncListSelection();
+    }
+
+    private void OnRegionClicked(CropRegion region, bool toggle)
+    {
+        if (DataContext is not CropImageViewModel vm)
+            return;
+
+        if (toggle)
+            vm.ToggleSelection(region);
+        else
+            vm.SetSelection(region);
+
         SyncListSelection();
     }
 
@@ -132,16 +147,25 @@ public partial class CropImageWindow : Window
         }
     }
 
+    private bool _syncingList;
+
     private void RegionList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (DataContext is not CropImageViewModel vm)
+        if (_syncingList || DataContext is not CropImageViewModel vm)
             return;
-        if (RegionList.SelectedItem is CropRegionListItem item)
-            vm.SelectedRegion = item.Region;
-        else if (RegionList.SelectedItem is null && e.AddedItems.Count == 0)
+
+        var selected = new List<CropRegionListItem>();
+        if (RegionList.SelectedItems is { } items)
         {
-            // keep canvas selection unless user cleared list
+            foreach (var obj in items)
+            {
+                if (obj is CropRegionListItem item)
+                    selected.Add(item);
+            }
         }
+
+        vm.SetSelectionFromList(selected);
+        Canvas.InvalidateVisual();
     }
 
     private void SyncListSelection()
@@ -149,20 +173,24 @@ public partial class CropImageWindow : Window
         if (DataContext is not CropImageViewModel vm)
             return;
 
-        CropRegionListItem? match = null;
-        if (vm.SelectedRegion is not null)
+        _syncingList = true;
+        try
         {
-            foreach (var item in vm.RegionItems)
+            if (RegionList.SelectedItems is { } selectedItems)
             {
-                if (ReferenceEquals(item.Region, vm.SelectedRegion))
+                selectedItems.Clear();
+                foreach (var item in vm.RegionItems)
                 {
-                    match = item;
-                    break;
+                    if (vm.IsRegionSelected(item.Region))
+                        selectedItems.Add(item);
                 }
             }
         }
+        finally
+        {
+            _syncingList = false;
+        }
 
-        RegionList.SelectedItem = match;
         Canvas.InvalidateVisual();
     }
 }

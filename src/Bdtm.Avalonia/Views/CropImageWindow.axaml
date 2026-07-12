@@ -65,13 +65,14 @@
                    FontWeight="SemiBold"
                    Margin="0,0,0,8" />
         <TextBlock DockPanel.Dock="Bottom"
-                   Text="Delete 删除 · Esc 取消"
+                   Text="Ctrl+点击多选 · Delete 删除 · Esc 取消"
                    Opacity="0.6"
                    FontSize="11"
                    Margin="0,8,0,0"
                    TextWrapping="Wrap" />
         <ListBox x:Name="RegionList"
                  ItemsSource="{Binding RegionItems}"
+                 SelectionMode="Multiple"
                  SelectionChanged="RegionList_SelectionChanged">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:CropRegionListItem">
@@ -90,6 +91,7 @@
       <ctrl:CropCanvasControl x:Name="Canvas"
                               Regions="{Binding Regions}"
                               SelectedRegion="{Binding SelectedRegion, Mode=TwoWay}"
+                              SelectedRegions="{Binding SelectedRegions}"
                               ImagePixelWidth="{Binding ImageWidth}"
                               ImagePixelHeight="{Binding ImageHeight}"
                               AspectPreset="{Binding SelectedAspectPreset}" />

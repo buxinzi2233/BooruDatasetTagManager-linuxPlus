@@ -53,12 +53,65 @@ public partial class CropImageViewModel : ViewModelBase
     public ObservableCollection<CropAspectPreset> AspectPresets { get; }
     public IReadOnlyList<string> ExportedPaths { get; private set; }
 
+    /// <summary>Multi-selection for delete (and canvas highlight). Primary/last is <see cref="SelectedRegion"/>.</summary>
+    public ObservableCollection<CropRegion> SelectedRegions { get; } = new();
+
     [ObservableProperty] private CropRegion? selectedRegion;
     [ObservableProperty] private CropAspectPreset? selectedAspectPreset;
     [ObservableProperty] private string statusMessage = "在图像上拖拽添加裁剪区域。";
 
     /// <summary>List rows for binding (#n w×h). Synced with <see cref="Regions"/>.</summary>
     public ObservableCollection<CropRegionListItem> RegionItems { get; } = new();
+
+    public bool IsRegionSelected(CropRegion region) =>
+        SelectedRegions.Any(r => ReferenceEquals(r, region));
+
+    /// <summary>Replace multi-selection (single select / clear).</summary>
+    public void SetSelection(CropRegion? region)
+    {
+        SelectedRegions.Clear();
+        if (region is not null)
+            SelectedRegions.Add(region);
+        SelectedRegion = region;
+        RefreshSelectionFlags();
+    }
+
+    /// <summary>Ctrl/Cmd-click: toggle region in multi-selection.</summary>
+    public void ToggleSelection(CropRegion region)
+    {
+        int idx = -1;
+        for (int i = 0; i < SelectedRegions.Count; i++)
+        {
+            if (ReferenceEquals(SelectedRegions[i], region))
+            {
+                idx = i;
+                break;
+            }
+        }
+
+        if (idx >= 0)
+        {
+            SelectedRegions.RemoveAt(idx);
+            SelectedRegion = SelectedRegions.Count > 0 ? SelectedRegions[^1] : null;
+        }
+        else
+        {
+            SelectedRegions.Add(region);
+            SelectedRegion = region;
+        }
+
+        RefreshSelectionFlags();
+    }
+
+    /// <summary>Sync multi-selection from list box (extended multi-select).</summary>
+    public void SetSelectionFromList(IEnumerable<CropRegionListItem> items)
+    {
+        SelectedRegions.Clear();
+        foreach (CropRegionListItem item in items)
+            SelectedRegions.Add(item.Region);
+        SelectedRegion = SelectedRegions.Count > 0 ? SelectedRegions[^1] : null;
+        RefreshSelectionFlags();
+    }
 
     public void AddRegionFromImageRect(CropRect rect)
     {
@@ -95,7 +148,7 @@ public partial class CropImageViewModel : ViewModelBase
             DisplayColorArgb = CropCanvasHelper.RegionColors[(index - 1) % CropCanvasHelper.RegionColors.Length],
         };
         Regions.Add(region);
-        SelectedRegion = region;
+        SetSelection(region);
         string ratioNote = SelectedAspectPreset is null || SelectedAspectPreset.IsFree
             ? ""
             : $" · {SelectedAspectPreset.Name}";
@@ -108,35 +161,47 @@ public partial class CropImageViewModel : ViewModelBase
     {
         if (SelectedAspectPreset is null || SelectedAspectPreset.IsFree)
         {
-            StatusMessage = "自由比例：拖拽添加任意矩形。";
+            StatusMessage = "自由比例：拖拽添加任意矩形。Ctrl+点击可多选后删除。";
             return;
         }
 
         if (SelectedAspectPreset.HasFixedSize)
         {
             StatusMessage =
-                $"固定 {SelectedAspectPreset.FixedWidth}×{SelectedAspectPreset.FixedHeight}：拖拽定位，松开后落到该像素尺寸（图更小时会夹紧）。";
+                $"固定 {SelectedAspectPreset.FixedWidth}×{SelectedAspectPreset.FixedHeight}：拖拽定位，松开后落到该像素尺寸。Ctrl+点击多选删除。";
             return;
         }
 
-        StatusMessage = $"锁定 {SelectedAspectPreset.Name}：拖拽时保持宽高比。";
+        StatusMessage = $"锁定 {SelectedAspectPreset.Name}：拖拽保持宽高比。Ctrl+点击多选删除。";
     }
 
     [RelayCommand]
     public void DeleteSelected()
     {
-        if (SelectedRegion is null)
+        var toRemove = SelectedRegions.Count > 0
+            ? SelectedRegions.ToList()
+            : (SelectedRegion is null ? new List<CropRegion>() : new List<CropRegion> { SelectedRegion });
+
+        if (toRemove.Count == 0)
         {
-            StatusMessage = "请先选择一个区域。";
+            StatusMessage = "请先选择要删除的区域（可 Ctrl+点击 / 列表多选）。";
             return;
         }
 
-        Regions.Remove(SelectedRegion);
+        int removed = 0;
+        foreach (CropRegion region in toRemove)
+        {
+            if (Regions.Remove(region))
+                removed++;
+        }
+
+        SelectedRegions.Clear();
         SelectedRegion = null;
         RenumberRegions();
+        RefreshSelectionFlags();
         StatusMessage = Regions.Count == 0
-            ? "已删除区域。在图像上拖拽添加裁剪区域。"
-            : $"已删除区域。剩余 {Regions.Count} 个。";
+            ? $"已删除 {removed} 个区域。在图像上拖拽添加裁剪区域。"
+            : $"已删除 {removed} 个区域。剩余 {Regions.Count} 个。";
     }
 
     public bool TryExport()
@@ -206,19 +271,35 @@ public partial class CropImageViewModel : ViewModelBase
         RegionItems.Clear();
         foreach (CropRegion region in Regions)
             RegionItems.Add(new CropRegionListItem(region));
+        RefreshSelectionFlags();
+    }
 
-        // Keep list selection in sync when renumbering changes display text only.
-        if (SelectedRegion is not null)
-        {
-            var match = RegionItems.FirstOrDefault(i => ReferenceEquals(i.Region, SelectedRegion));
-            // no-op; SelectedRegion binding is on CropRegion via canvas/list
-        }
+    private void RefreshSelectionFlags()
+    {
+        foreach (var item in RegionItems)
+            item.IsSelected = IsRegionSelected(item.Region);
     }
 
     partial void OnSelectedRegionChanged(CropRegion? value)
     {
-        foreach (var item in RegionItems)
-            item.IsSelected = ReferenceEquals(item.Region, value);
+        // Keep SelectedRegions consistent when only SelectedRegion is set from outside.
+        if (value is null)
+        {
+            if (SelectedRegions.Count > 0)
+            {
+                SelectedRegions.Clear();
+                RefreshSelectionFlags();
+            }
+            return;
+        }
+
+        if (!IsRegionSelected(value))
+        {
+            SelectedRegions.Clear();
+            SelectedRegions.Add(value);
+        }
+
+        RefreshSelectionFlags();
     }
 }
 
