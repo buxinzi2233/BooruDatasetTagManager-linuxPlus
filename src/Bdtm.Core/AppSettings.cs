@@ -66,6 +66,9 @@ public sealed class AppSettings
     /// <summary>Review-only vs summary-apply execution mode preference.</summary>
     public CharacterTagAuditExecutionMode CharacterTagAuditExecutionMode { get; set; } = CharacterTagAuditExecutionMode.Review;
 
+    /// <summary>AiApiServer endpoint for background removal and other AI operations.</summary>
+    public string AiApiEndpoint { get; set; } = "http://127.0.0.1:7866";
+
     /// <summary>Optional font preference without System.Drawing.</summary>
     public string? FontFamily { get; set; }
 
@@ -144,6 +147,7 @@ public sealed class AppSettings
             loaded.CharacterTagAuditModel ??= string.Empty;
             if (loaded.CharacterTagAuditMinimumCount <= 0)
                 loaded.CharacterTagAuditMinimumCount = 10;
+            loaded.AiApiEndpoint ??= "http://127.0.0.1:7866";
             return loaded;
         }
         catch (Exception)

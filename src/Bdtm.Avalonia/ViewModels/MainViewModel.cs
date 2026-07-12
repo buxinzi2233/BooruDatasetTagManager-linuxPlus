@@ -1747,6 +1747,76 @@ public partial class MainViewModel : ViewModelBase
         StatusText = $"已更新标签「{tag}」的图片标记。";
     }
 
+    [RelayCommand]
+    private async Task OpenBgRemovalAsync()
+    {
+        if (IsBusy) return;
+        var window = GetMainWindow();
+        if (window is null) return;
+
+        var vm = new BgRemovalViewModel
+        {
+            AiApiEndpoint = !string.IsNullOrWhiteSpace(_settings.AiApiEndpoint)
+                ? _settings.AiApiEndpoint
+                : "http://127.0.0.1:7866",
+        };
+        var dlg = new Views.BgRemovalWindow { DataContext = vm };
+        var ok = await dlg.ShowDialog<bool?>(window);
+        if (ok != true || !vm.IsConnected) return;
+
+        // Build image list: selected images if any, else current image
+        List<string> paths;
+        if (SelectedImages.Count > 0)
+            paths = SelectedImages.Select(i => i.Path).ToList();
+        else if (SelectedImage is not null)
+            paths = new List<string> { SelectedImage.Path };
+        else
+        {
+            StatusText = "请先选择图片。";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            using var client = new RmbgClient(vm.AiApiEndpoint);
+            var added = new List<string>();
+            var done = await vm.RunOnImagesAsync(client, paths, msg => Dispatcher.UIThread.Post(() => StatusText = msg));
+
+            foreach (var p in paths)
+            {
+                var outPath = Path.Combine(
+                    Path.GetDirectoryName(p)!,
+                    Path.GetFileNameWithoutExtension(p) + "_bgremoved.png");
+                if (File.Exists(outPath))
+                {
+                    var imported = _dataset.AddImages(new[] { outPath });
+                    added.AddRange(imported);
+                }
+            }
+
+            if (added.Count > 0)
+            {
+                bool showPaths = ShowPaths;
+                foreach (string p in added)
+                    if (_dataset.DataSet.TryGetValue(p, out var data))
+                        Images.Add(new ImageListItem(data) { ShowFullPath = showPaths });
+                HasNoImages = Images.Count == 0;
+                _ = LoadThumbnailsAsync();
+            }
+
+            StatusText = $"去背景完成，导入 {added.Count} 张。";
+        }
+        catch (Exception ex)
+        {
+            StatusText = "去背景失败: " + ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     private static Window? GetMainWindow()
     {
         if (global::Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

@@ -50,6 +50,7 @@
         <MenuItem Header="裁剪当前图…" Command="{Binding CropCurrentImageCommand}"
                   ToolTip.Tip="在当前图上拖拽多区域裁剪并导入数据集" />
         <MenuItem Header="视频工具…" Command="{Binding OpenVideoToolsCommand}" />
+        <MenuItem Header="去背景…" Command="{Binding OpenBgRemovalCommand}" />
         <MenuItem Header="标签 Wiki…" Command="{Binding OpenWikiCommand}" />
         <MenuItem Header="TAG2NL…" Command="{Binding RunTag2NlCommand}"
                   ToolTip.Tip="整库标签→自然语言 caption，输出到旁系 _captioned 目录" />

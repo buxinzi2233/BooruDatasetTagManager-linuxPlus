@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Bdtm.Avalonia.ViewModels"
+        x:Class="Bdtm.Avalonia.Views.BgRemovalWindow"
+        x:DataType="vm:BgRemovalViewModel"
+        Width="480" Height="320"
+        MinWidth="400" MinHeight="280"
+        Title="去背景"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False">
+  <StackPanel Margin="16" Spacing="10">
+    <TextBlock Text="AiApi 端点" />
+    <TextBox Text="{Binding AiApiEndpoint}" MinHeight="28" />
+    <Button Content="检查连接" Command="{Binding CheckConnectionCommand}"
+            HorizontalAlignment="Left" MinWidth="100" Padding="14,7" />
+    <ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}"
+              IsVisible="{Binding IsConnected}" MinHeight="28" />
+    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" MinHeight="32" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,12,0,0">
+      <Button Content="确定" Click="Ok_Click" MinWidth="88" Padding="14,7" FontWeight="SemiBold" />
+      <Button Content="取消" Click="Cancel_Click" MinWidth="88" Padding="14,7" />
+    </StackPanel>
+  </StackPanel>
+</Window>

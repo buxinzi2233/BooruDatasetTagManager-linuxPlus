@@ -94,6 +94,13 @@
                    Text="用于「工具 / 打标 → 角色标签审计…」。留空则回退到上方 Vision 模型。" />
         <TextBlock Opacity="0.8" Text="审计模型" />
         <TextBox Text="{Binding CharacterTagAuditModel}" Watermark="留空 = 使用 Vision 模型" />
+
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="AiApi 去背景" />
+        <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                   Text="用于「工具 → 去背景…」功能。指向运行中的 AiApiServer。" />
+        <TextBlock Opacity="0.8" Text="Endpoint" />
+        <TextBox Text="{Binding AiApiEndpoint}" Watermark="http://127.0.0.1:7866" />
       </StackPanel>
     </ScrollViewer>
   </DockPanel>
