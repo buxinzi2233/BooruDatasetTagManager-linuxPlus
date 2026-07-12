@@ -26,7 +26,7 @@ source venv/bin/activate
 python main.py
 ```
 
-默认监听 `http://127.0.0.1:7866`。
+默认监听 `http://127.0.0.1:50051`。
 
 ## 可用端点
 
@@ -41,5 +41,5 @@ python main.py
 ## BDTM 设置
 
 1. 启动 AiApiServer 后保持运行
-2. 打开 BDTM → 设置 → 填入 AiApi 地址（默认 `http://127.0.0.1:7866`）
+2. 打开 BDTM → 设置 → 填入 AiApi 地址（默认 `http://127.0.0.1:50051`）
 3. 工具 → 去背景… → 连接检查 → 选择模型 → 执行
