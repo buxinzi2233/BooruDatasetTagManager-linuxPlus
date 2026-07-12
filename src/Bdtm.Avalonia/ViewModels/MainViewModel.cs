@@ -1754,58 +1754,114 @@ public partial class MainViewModel : ViewModelBase
         var window = GetMainWindow();
         if (window is null) return;
 
+        // Determine image list based on mode (re-evaluated after dialog in case mode changed)
+        string? testImagePath = SelectedImage?.Path;
+        if (string.IsNullOrEmpty(testImagePath) && SelectedImages.Count > 0)
+            testImagePath = SelectedImages[0].Path;
+
         var vm = new BgRemovalViewModel
         {
             AiApiEndpoint = !string.IsNullOrWhiteSpace(_settings.AiApiEndpoint)
                 ? _settings.AiApiEndpoint
                 : "http://127.0.0.1:50051",
         };
-        var dlg = new Views.BgRemovalWindow { DataContext = vm };
-        var ok = await dlg.ShowDialog<bool?>(window);
-        if (ok != true || !vm.IsConnected) return;
 
-        // Build image list: selected images if any, else current image
+        // Restore saved preferences
+        if (!string.IsNullOrWhiteSpace(_settings.BgModelChoice) && vm.Models.Count > 0)
+        {
+            var saved = _settings.BgModelChoice.Split(':', 2);
+            if (saved.Length == 2)
+                vm.SelectedModel = vm.Models.FirstOrDefault(m => m.BackendId == saved[0] && m.ModelId == saved[1]);
+        }
+        vm.OutputSaveAsCopy = _settings.BgDefaultOutput == BgOutputMode.SaveAsCopy;
+        vm.OutputOverwrite = _settings.BgDefaultOutput == BgOutputMode.OverwriteOriginal;
+        vm.BackupOriginal = _settings.BgBackupOriginal;
+
+        var dlg = new Views.BgRemovalWindow
+        {
+            DataContext = vm,
+            TestImagePath = testImagePath,
+        };
+        var ok = await dlg.ShowDialog<bool?>(window);
+        if (ok != true || !vm.IsConnected || vm.SelectedModel is null) return;
+
+        // Build image list based on chosen mode
         List<string> paths;
-        if (SelectedImages.Count > 0)
-            paths = SelectedImages.Select(i => i.Path).ToList();
-        else if (SelectedImage is not null)
-            paths = new List<string> { SelectedImage.Path };
+        if (vm.ModeSelectedOnly)
+        {
+            if (SelectedImages.Count > 0)
+                paths = SelectedImages.Select(i => i.Path).ToList();
+            else if (SelectedImage is not null)
+                paths = new List<string> { SelectedImage.Path };
+            else
+            {
+                StatusText = "请先选择图片。";
+                return;
+            }
+        }
         else
         {
-            StatusText = "请先选择图片。";
-            return;
+            // All images in dataset
+            paths = _dataset.DataSet.Values.Select(d => d.ImageFilePath).ToList();
         }
 
         IsBusy = true;
+        StatusText = $"去背景处理中… (0/{paths.Count})";
         try
         {
-            using var client = new RmbgClient(vm.AiApiEndpoint);
-            var added = new List<string>();
-            var done = await vm.RunOnImagesAsync(client, paths, msg => Dispatcher.UIThread.Post(() => StatusText = msg));
-
-            foreach (var p in paths)
+            var progress = new Progress<BgProgress>(p =>
             {
-                var outPath = Path.Combine(
-                    Path.GetDirectoryName(p)!,
-                    Path.GetFileNameWithoutExtension(p) + "_bgremoved.png");
-                if (File.Exists(outPath))
+                Dispatcher.UIThread.Post(() =>
+                    StatusText = $"去背景处理中… ({p.Completed}/{p.Total}) {p.CurrentFile}");
+            });
+
+            var summary = await vm.RunBatchAsync(paths, progress);
+
+            // Save preferences
+            _settings.BgModelChoice = $"{vm.SelectedModel.BackendId}:{vm.SelectedModel.ModelId}";
+            _settings.BgDefaultOutput = vm.OutputOverwrite ? BgOutputMode.OverwriteOriginal : BgOutputMode.SaveAsCopy;
+            _settings.BgBackupOriginal = vm.BackupOriginal;
+            try { _settings.Save(); } catch { /* best effort */ }
+
+            // Import _bgremoved.png files into dataset (only for SaveAsCopy mode)
+            if (vm.OutputSaveAsCopy)
+            {
+                var added = new List<string>();
+                foreach (var result in summary.Results)
                 {
-                    var imported = _dataset.AddImages(new[] { outPath });
+                    if (!result.Success || result.OutputPath is null || !File.Exists(result.OutputPath))
+                        continue;
+                    var imported = _dataset.AddImages(new[] { result.OutputPath });
                     added.AddRange(imported);
                 }
-            }
 
-            if (added.Count > 0)
+                if (added.Count > 0)
+                {
+                    bool showPaths = ShowPaths;
+                    foreach (string p in added)
+                        if (_dataset.DataSet.TryGetValue(p, out var data))
+                            Images.Add(new ImageListItem(data) { ShowFullPath = showPaths });
+                    HasNoImages = Images.Count == 0;
+                    _ = LoadThumbnailsAsync();
+                }
+
+                StatusText = $"去背景完成 · 成功 {summary.Succeeded} · 失败 {summary.Failed} · 导入 {added.Count} 张";
+            }
+            else
             {
-                bool showPaths = ShowPaths;
-                foreach (string p in added)
-                    if (_dataset.DataSet.TryGetValue(p, out var data))
-                        Images.Add(new ImageListItem(data) { ShowFullPath = showPaths });
-                HasNoImages = Images.Count == 0;
+                StatusText = $"去背景完成 · 成功 {summary.Succeeded} · 失败 {summary.Failed}（已覆盖原图）";
+                // Refresh thumbnails for modified images
                 _ = LoadThumbnailsAsync();
             }
 
-            StatusText = $"去背景完成，导入 {added.Count} 张。";
+            if (summary.Failed > 0 && summary.Results.Count > 0)
+            {
+                var errors = summary.Results
+                    .Where(r => !r.Success)
+                    .Take(3)
+                    .Select(r => $"{Path.GetFileName(r.SourcePath ?? "")}: {r.ErrorMessage}");
+                StatusText += " | 错误: " + string.Join("; ", errors);
+            }
         }
         catch (Exception ex)
         {

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Bdtm.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,13 +15,42 @@ public partial class BgRemovalViewModel : ViewModelBase
 {
     [ObservableProperty] private string aiApiEndpoint = "http://127.0.0.1:50051";
     [ObservableProperty] private bool isConnected;
-    [ObservableProperty] private List<string> models = new();
-    [ObservableProperty] private string? selectedModel;
+    [ObservableProperty] private ObservableCollection<BgModel> models = new();
+    [ObservableProperty] private BgModel? selectedModel;
     [ObservableProperty] private string statusMessage = "请先检查连接。";
-    [ObservableProperty] private bool canConnect = true;
     [ObservableProperty] private bool isBusy;
+    [ObservableProperty] private bool canConnect = true;
 
-    public int? ResultCount { get; private set; }
+    // Mode: All images / Selected only
+    [ObservableProperty] private bool modeAllImages = true;
+    [ObservableProperty] private bool modeSelectedOnly;
+
+    // Background: Transparent / Solid color
+    [ObservableProperty] private bool bgTransparent = true;
+    [ObservableProperty] private bool bgSolidColor;
+    [ObservableProperty] private string solidColor = "#FFFFFF";
+
+    // Output: Overwrite original / Save as copy
+    [ObservableProperty] private bool outputOverwrite;
+    [ObservableProperty] private bool outputSaveAsCopy = true;
+    [ObservableProperty] private bool backupOriginal = true;
+
+    // Test result
+    [ObservableProperty] private string testResultMessage = "";
+
+    public BgBatchSummary? BatchSummary { get; private set; }
+
+    public BgOptions BuildOptions()
+    {
+        return new BgOptions
+        {
+            Mode = ModeSelectedOnly ? BgMode.SelectedOnly : BgMode.AllImages,
+            Output = OutputOverwrite ? BgOutputMode.OverwriteOriginal : BgOutputMode.SaveAsCopy,
+            Background = BgSolidColor ? BgBackgroundKind.SolidColor : BgBackgroundKind.Transparent,
+            SolidColorArgb = SolidColor,
+            BackupOriginal = BackupOriginal,
+        };
+    }
 
     [RelayCommand]
     async Task CheckConnection()
@@ -28,22 +59,20 @@ public partial class BgRemovalViewModel : ViewModelBase
         IsBusy = true;
         CanConnect = false;
         StatusMessage = "正在检查连接…";
+        Models.Clear();
+        TestResultMessage = "";
+
         try
         {
-            using var client = new RmbgClient(AiApiEndpoint);
-            var (ok, err) = await client.CheckConnectionAsync();
-            if (!ok)
-            {
-                StatusMessage = "连接失败: " + err;
-                IsConnected = false;
-                return;
-            }
-
-            var rmbgModels = await client.GetRmbgModelsAsync();
-            Models = rmbgModels;
+            var backend = new AiApiBgBackend(AiApiEndpoint);
+            var modelList = await backend.ListModelsAsync();
+            foreach (var m in modelList)
+                Models.Add(m);
             SelectedModel = Models.FirstOrDefault();
-            IsConnected = true;
-            StatusMessage = $"已连接，找到 {Models.Count} 个去背景模型。";
+            IsConnected = Models.Count > 0;
+            StatusMessage = IsConnected
+                ? $"已连接，找到 {Models.Count} 个去背景模型。"
+                : "已连接，但未找到去背景模型（检查 AiApiServer 是否已加载 rmbg 模型）。";
         }
         catch (Exception ex)
         {
@@ -58,32 +87,50 @@ public partial class BgRemovalViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Run background removal on a list of image paths using the provided client.
-    /// Results are saved as _bgremoved.png alongside the original files.
+    /// Test background removal on a single image path (preview).
+    /// Returns true if successful.
     /// </summary>
-    public async Task<bool> RunOnImagesAsync(RmbgClient client, List<string> imagePaths, Action<string> onProgress)
+    public async Task<bool> TestAsync(string imagePath, CancellationToken ct = default)
     {
-        int done = 0;
-        int failed = 0;
-        foreach (var path in imagePaths)
+        if (SelectedModel is null)
         {
-            var result = await client.RemoveBackgroundAsync(path, SelectedModel ?? Models[0]);
-            if (result.Success && result.ImageData is not null)
-            {
-                string outPath = Path.Combine(
-                    Path.GetDirectoryName(path)!,
-                    Path.GetFileNameWithoutExtension(path) + "_bgremoved.png");
-                await File.WriteAllBytesAsync(outPath, result.ImageData);
-                done++;
-                onProgress?.Invoke($"已处理 {done}/{imagePaths.Count}: {Path.GetFileName(path)}");
-            }
-            else
-            {
-                failed++;
-            }
+            TestResultMessage = "请先选择一个模型。";
+            return false;
         }
 
-        ResultCount = done;
-        return done > 0;
+        TestResultMessage = "测试中…";
+        IsBusy = true;
+        try
+        {
+            var backend = new AiApiBgBackend(AiApiEndpoint);
+            var result = await backend.RunAsync(SelectedModel, imagePath, BuildOptions(), ct);
+            TestResultMessage = result.Success
+                ? $"测试成功：{Path.GetFileName(result.OutputPath)}"
+                : "测试失败: " + (result.ErrorMessage ?? "unknown");
+            return result.Success;
+        }
+        catch (Exception ex)
+        {
+            TestResultMessage = "测试失败: " + ex.Message;
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Run bg removal on multiple image paths.
+    /// </summary>
+    public async Task<BgBatchSummary> RunBatchAsync(IReadOnlyList<string> imagePaths, IProgress<BgProgress>? progress = null, CancellationToken ct = default)
+    {
+        if (SelectedModel is null)
+            throw new InvalidOperationException("未选择模型。");
+
+        var backend = new AiApiBgBackend(AiApiEndpoint);
+        var service = new BgRemovalService();
+        BatchSummary = await service.RunOnAsync(backend, SelectedModel, BuildOptions(), imagePaths, progress, ct);
+        return BatchSummary;
     }
 }

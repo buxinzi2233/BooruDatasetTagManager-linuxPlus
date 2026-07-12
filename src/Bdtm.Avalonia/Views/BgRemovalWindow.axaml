@@ -3,23 +3,78 @@
         xmlns:vm="using:Bdtm.Avalonia.ViewModels"
         x:Class="Bdtm.Avalonia.Views.BgRemovalWindow"
         x:DataType="vm:BgRemovalViewModel"
-        Width="480" Height="320"
-        MinWidth="400" MinHeight="280"
+        Width="540" Height="520"
+        MinWidth="460" MinHeight="440"
         Title="去背景"
         WindowStartupLocation="CenterOwner"
-        CanResize="False"
+        CanResize="True"
         ShowInTaskbar="False">
-  <StackPanel Margin="16" Spacing="10">
-    <TextBlock Text="AiApi 端点" />
-    <TextBox Text="{Binding AiApiEndpoint}" MinHeight="28" />
-    <Button Content="检查连接" Command="{Binding CheckConnectionCommand}"
-            HorizontalAlignment="Left" MinWidth="100" Padding="14,7" />
-    <ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}"
-              IsVisible="{Binding IsConnected}" MinHeight="28" />
-    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" MinHeight="32" />
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,12,0,0">
-      <Button Content="确定" Click="Ok_Click" MinWidth="88" Padding="14,7" FontWeight="SemiBold" />
+  <DockPanel Margin="16">
+    <!-- Bottom buttons -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,12,0,0">
+      <Button Content="测试" Click="Test_Click" MinWidth="80" Padding="12,7"
+              IsEnabled="{Binding IsConnected}" />
+      <Button Content="确定" Click="Ok_Click" MinWidth="88" Padding="14,7" FontWeight="SemiBold"
+              IsEnabled="{Binding IsConnected}" />
       <Button Content="取消" Click="Cancel_Click" MinWidth="88" Padding="14,7" />
     </StackPanel>
-  </StackPanel>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Spacing="12">
+
+        <!-- Connection -->
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="连接" />
+        <TextBlock Opacity="0.8" Text="AiApi 端点" />
+        <Grid ColumnDefinitions="*,8,Auto">
+          <TextBox Grid.Column="0" Text="{Binding AiApiEndpoint}" />
+          <Button Grid.Column="2" Content="检查连接" Command="{Binding CheckConnectionCommand}"
+                  MinWidth="100" Padding="14,7"
+                  IsEnabled="{Binding CanConnect}" />
+        </Grid>
+
+        <!-- Model selection -->
+        <TextBlock Opacity="0.8" Text="去背景模型" />
+        <ComboBox ItemsSource="{Binding Models}"
+                  SelectedItem="{Binding SelectedModel}"
+                  MinHeight="28"
+                  IsEnabled="{Binding IsConnected}"
+                  DisplayMemberBinding="{Binding Display}" />
+
+        <!-- Mode -->
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="移除模式" />
+        <StackPanel Orientation="Horizontal" Spacing="16">
+          <RadioButton Content="全部图片" IsChecked="{Binding ModeAllImages}" GroupName="Mode" />
+          <RadioButton Content="仅所选图片" IsChecked="{Binding ModeSelectedOnly}" GroupName="Mode" />
+        </StackPanel>
+
+        <!-- Background -->
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="背景" />
+        <StackPanel Orientation="Horizontal" Spacing="16">
+          <RadioButton Content="透明" IsChecked="{Binding BgTransparent}" GroupName="Bg" />
+          <RadioButton Content="纯色" IsChecked="{Binding BgSolidColor}" GroupName="Bg" />
+          <TextBox Text="{Binding SolidColor}" MinWidth="80"
+                   IsEnabled="{Binding BgSolidColor}" />
+        </StackPanel>
+
+        <!-- Output -->
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="输出方式" />
+        <StackPanel Orientation="Horizontal" Spacing="16">
+          <RadioButton Content="替换原图" IsChecked="{Binding OutputOverwrite}" GroupName="Output" />
+          <RadioButton Content="另存副本 (_bgremoved.png)" IsChecked="{Binding OutputSaveAsCopy}" GroupName="Output" />
+        </StackPanel>
+        <CheckBox Content="替换前备份原图 (.bdtm-bak)"
+                  IsChecked="{Binding BackupOriginal}"
+                  IsEnabled="{Binding OutputOverwrite}" />
+
+        <!-- Status -->
+        <Separator />
+        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" Opacity="0.9" />
+        <TextBlock Text="{Binding TestResultMessage}" TextWrapping="Wrap" Opacity="0.8" FontSize="12" />
+
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
 </Window>
