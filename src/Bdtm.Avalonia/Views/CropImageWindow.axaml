@@ -30,6 +30,15 @@
               Click="Cancel_Click"
               MinWidth="80"
               Padding="12,7" />
+      <TextBlock Text="比例/尺寸"
+                 VerticalAlignment="Center"
+                 Margin="12,0,0,0"
+                 Opacity="0.85" />
+      <ComboBox Width="168"
+                ItemsSource="{Binding AspectPresets}"
+                SelectedItem="{Binding SelectedAspectPreset}"
+                DisplayMemberBinding="{Binding Name}"
+                VerticalAlignment="Center" />
       <TextBlock Text="{Binding FileName}"
                  VerticalAlignment="Center"
                  Margin="12,0,0,0"
@@ -82,7 +91,8 @@
                               Regions="{Binding Regions}"
                               SelectedRegion="{Binding SelectedRegion, Mode=TwoWay}"
                               ImagePixelWidth="{Binding ImageWidth}"
-                              ImagePixelHeight="{Binding ImageHeight}" />
+                              ImagePixelHeight="{Binding ImageHeight}"
+                              AspectPreset="{Binding SelectedAspectPreset}" />
     </Border>
   </DockPanel>
 </Window>

@@ -86,4 +86,69 @@ public class CropGeometryTests
         Assert.Equal(0xDC9B59B6u, CropCanvasHelper.RegionColors[4]);
         Assert.Equal(0xDCE67E22u, CropCanvasHelper.RegionColors[5]);
     }
+
+    [Fact]
+    public void NormalizeDragRectangleWithAspect_LocksOneToOne()
+    {
+        // drag right 100, down 40 → square side 100
+        var r = CropCanvasHelper.NormalizeDragRectangleWithAspect(10, 20, 110, 60, 1, 1);
+        Assert.Equal(10, r.X);
+        Assert.Equal(20, r.Y);
+        Assert.Equal(100, r.Width);
+        Assert.Equal(100, r.Height);
+    }
+
+    [Fact]
+    public void NormalizeDragRectangleWithAspect_LocksSixteenNine()
+    {
+        // drag height-dominant: height 90 → width 160
+        var r = CropCanvasHelper.NormalizeDragRectangleWithAspect(0, 0, 10, 90, 16, 9);
+        Assert.Equal(0, r.X);
+        Assert.Equal(0, r.Y);
+        Assert.Equal(160, r.Width);
+        Assert.Equal(90, r.Height);
+    }
+
+    [Fact]
+    public void NormalizeDragRectangleWithAspect_NegativeDragKeepsStartAsOppositeCorner()
+    {
+        var r = CropCanvasHelper.NormalizeDragRectangleWithAspect(100, 100, 40, 40, 1, 1);
+        Assert.Equal(60, r.Width);
+        Assert.Equal(60, r.Height);
+        Assert.Equal(40, r.X); // 100 - 60
+        Assert.Equal(40, r.Y);
+    }
+
+    [Fact]
+    public void NormalizeDragRectangleWithAspect_ZeroAspectIsFree()
+    {
+        var r = CropCanvasHelper.NormalizeDragRectangleWithAspect(0, 0, 30, 10, 0, 0);
+        Assert.Equal(30, r.Width);
+        Assert.Equal(10, r.Height);
+    }
+
+    [Fact]
+    public void PlaceFixedSize_CentersAndClamps()
+    {
+        var r = CropCanvasHelper.PlaceFixedSize(50, 50, 40, 40, 100, 100);
+        Assert.Equal(30, r.X);
+        Assert.Equal(30, r.Y);
+        Assert.Equal(40, r.Width);
+        Assert.Equal(40, r.Height);
+
+        var small = CropCanvasHelper.PlaceFixedSize(10, 10, 200, 200, 100, 80);
+        Assert.Equal(0, small.X);
+        Assert.Equal(0, small.Y);
+        Assert.Equal(100, small.Width);
+        Assert.Equal(80, small.Height);
+    }
+
+    [Fact]
+    public void CropAspectPreset_DefaultsIncludeOneToOneAndFixed()
+    {
+        var list = CropAspectPreset.CreateDefaults();
+        Assert.Contains(list, p => p.Name == "自由" && p.IsFree);
+        Assert.Contains(list, p => p.Name == "1:1" && p.TryGetAspect(out var w, out var h) && w == 1 && h == 1);
+        Assert.Contains(list, p => p.Name.StartsWith("512") && p.HasFixedSize && p.FixedWidth == 512);
+    }
 }

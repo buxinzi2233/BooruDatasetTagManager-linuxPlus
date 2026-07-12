@@ -34,6 +34,9 @@ public class CropCanvasControl : Control
     public static readonly StyledProperty<int> ImagePixelHeightProperty =
         AvaloniaProperty.Register<CropCanvasControl, int>(nameof(ImagePixelHeight));
 
+    public static readonly StyledProperty<CropAspectPreset?> AspectPresetProperty =
+        AvaloniaProperty.Register<CropCanvasControl, CropAspectPreset?>(nameof(AspectPreset));
+
     private bool _dragging;
     private Point _dragStart;
     private Point _dragEnd;
@@ -76,6 +79,13 @@ public class CropCanvasControl : Control
         set => SetValue(ImagePixelHeightProperty, value);
     }
 
+    /// <summary>When set, drag rubber-band locks to this aspect / fixed ratio.</summary>
+    public CropAspectPreset? AspectPreset
+    {
+        get => GetValue(AspectPresetProperty);
+        set => SetValue(AspectPresetProperty, value);
+    }
+
     /// <summary>Raised when user finishes dragging a new region (image-space rect, pre-clamp).</summary>
     public event Action<CropRect>? RegionDragCompleted;
 
@@ -86,7 +96,8 @@ public class CropCanvasControl : Control
             RegionsProperty,
             SelectedRegionProperty,
             ImagePixelWidthProperty,
-            ImagePixelHeightProperty);
+            ImagePixelHeightProperty,
+            AspectPresetProperty);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -107,10 +118,27 @@ public class CropCanvasControl : Control
         else if (change.Property == SourceProperty
                  || change.Property == SelectedRegionProperty
                  || change.Property == ImagePixelWidthProperty
-                 || change.Property == ImagePixelHeightProperty)
+                 || change.Property == ImagePixelHeightProperty
+                 || change.Property == AspectPresetProperty)
         {
             InvalidateVisual();
         }
+    }
+
+    private CropRect BuildDragScreenRect()
+    {
+        CropAspectPreset? preset = AspectPreset;
+        if (preset is not null && preset.TryGetAspect(out double aw, out double ah))
+        {
+            return CropCanvasHelper.NormalizeDragRectangleWithAspect(
+                (int)_dragStart.X, (int)_dragStart.Y,
+                (int)_dragEnd.X, (int)_dragEnd.Y,
+                aw, ah);
+        }
+
+        return CropCanvasHelper.NormalizeDragRectangle(
+            (int)_dragStart.X, (int)_dragStart.Y,
+            (int)_dragEnd.X, (int)_dragEnd.Y);
     }
 
     private void OnRegionsChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -187,9 +215,7 @@ public class CropCanvasControl : Control
 
         if (_dragging)
         {
-            CropRect drag = CropCanvasHelper.NormalizeDragRectangle(
-                (int)_dragStart.X, (int)_dragStart.Y,
-                (int)_dragEnd.X, (int)_dragEnd.Y);
+            CropRect drag = BuildDragScreenRect();
             if (!drag.IsEmpty)
             {
                 var pen = new Pen(Brushes.Red, 2);
@@ -267,14 +293,23 @@ public class CropCanvasControl : Control
         int imageW = EffectiveImageWidth();
         int imageH = EffectiveImageHeight();
 
-        CropRect screenRect = CropCanvasHelper.NormalizeDragRectangle(
-            (int)_dragStart.X, (int)_dragStart.Y,
-            (int)_dragEnd.X, (int)_dragEnd.Y);
+        CropRect screenRect = BuildDragScreenRect();
 
         if (!screenRect.IsEmpty && imageW > 0 && imageH > 0)
         {
             CropRect imageRect = CropCanvasHelper.ScreenRectToImageRect(
                 screenRect, imageW, imageH, viewW, viewH);
+
+            // Fixed pixel presets: snap to exact WxH around drag center (when image allows).
+            CropAspectPreset? preset = AspectPreset;
+            if (preset is not null && preset.HasFixedSize
+                && preset.FixedWidth is int fw && preset.FixedHeight is int fh
+                && !imageRect.IsEmpty)
+            {
+                var (cx, cy) = CropCanvasHelper.RectCenter(imageRect);
+                imageRect = CropCanvasHelper.PlaceFixedSize(cx, cy, fw, fh, imageW, imageH);
+            }
+
             if (!imageRect.IsEmpty)
                 RegionDragCompleted?.Invoke(imageRect);
         }

@@ -181,4 +181,149 @@ public static class CropCanvasHelper
             Height = Math.Max(0, bottom - y),
         };
     }
+
+    /// <summary>
+    /// Build a drag rectangle from start→end that keeps width:height = aspectW:aspectH.
+    /// Anchor is the drag start corner; size grows with the dominant mouse axis.
+    /// Pass aspectW/aspectH ≤ 0 for free (unconstrained) drag.
+    /// </summary>
+    public static CropRect NormalizeDragRectangleWithAspect(
+        int x1,
+        int y1,
+        int x2,
+        int y2,
+        double aspectW,
+        double aspectH)
+    {
+        if (aspectW <= 0 || aspectH <= 0)
+            return NormalizeDragRectangle(x1, y1, x2, y2);
+
+        int dx = x2 - x1;
+        int dy = y2 - y1;
+        double adx = Math.Abs(dx);
+        double ady = Math.Abs(dy);
+        if (adx < 0.5 && ady < 0.5)
+            return default;
+
+        double targetRatio = aspectW / aspectH; // width / height
+        double width;
+        double height;
+        if (ady < 0.5 || adx / Math.Max(ady, 0.5) > targetRatio)
+        {
+            width = Math.Max(adx, 1);
+            height = width / targetRatio;
+        }
+        else
+        {
+            height = Math.Max(ady, 1);
+            width = height * targetRatio;
+        }
+
+        int w = Math.Max(1, (int)Math.Round(width));
+        int h = Math.Max(1, (int)Math.Round(height));
+        int x = dx >= 0 ? x1 : x1 - w;
+        int y = dy >= 0 ? y1 : y1 - h;
+        return new CropRect { X = x, Y = y, Width = w, Height = h };
+    }
+
+    /// <summary>
+    /// Place a fixed pixel size box on the image, centered on <paramref name="anchor"/> when possible.
+    /// If the image is smaller than the fixed size on an axis, that axis is clamped to the image size.
+    /// </summary>
+    public static CropRect PlaceFixedSize(
+        int anchorX,
+        int anchorY,
+        int fixedW,
+        int fixedH,
+        int imageW,
+        int imageH)
+    {
+        if (imageW <= 0 || imageH <= 0 || fixedW <= 0 || fixedH <= 0)
+            return default;
+
+        int w = Math.Min(fixedW, imageW);
+        int h = Math.Min(fixedH, imageH);
+        int x = anchorX - w / 2;
+        int y = anchorY - h / 2;
+        x = Math.Clamp(x, 0, Math.Max(0, imageW - w));
+        y = Math.Clamp(y, 0, Math.Max(0, imageH - h));
+        return new CropRect { X = x, Y = y, Width = w, Height = h };
+    }
+
+    /// <summary>
+    /// Center of a rectangle (integer).
+    /// </summary>
+    public static (int X, int Y) RectCenter(CropRect rect) =>
+        (rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+}
+
+/// <summary>
+/// Crop drag preset: free, locked aspect ratio, and/or fixed export pixel size.
+/// </summary>
+public sealed class CropAspectPreset
+{
+    public CropAspectPreset(
+        string name,
+        double? aspectWidth = null,
+        double? aspectHeight = null,
+        int? fixedWidth = null,
+        int? fixedHeight = null)
+    {
+        Name = name ?? throw new ArgumentNullException(nameof(name));
+        AspectWidth = aspectWidth;
+        AspectHeight = aspectHeight;
+        FixedWidth = fixedWidth;
+        FixedHeight = fixedHeight;
+    }
+
+    public string Name { get; }
+    public double? AspectWidth { get; }
+    public double? AspectHeight { get; }
+    public int? FixedWidth { get; }
+    public int? FixedHeight { get; }
+
+    public bool IsFree =>
+        (!AspectWidth.HasValue || !AspectHeight.HasValue || AspectWidth <= 0 || AspectHeight <= 0)
+        && !FixedWidth.HasValue;
+
+    public bool HasFixedSize => FixedWidth is > 0 && FixedHeight is > 0;
+
+    /// <summary>Effective aspect for rubber-band (fixed size implies its ratio).</summary>
+    public bool TryGetAspect(out double aspectW, out double aspectH)
+    {
+        if (FixedWidth is int fw && fw > 0 && FixedHeight is int fh && fh > 0)
+        {
+            aspectW = fw;
+            aspectH = fh;
+            return true;
+        }
+
+        if (AspectWidth is double aw && aw > 0 && AspectHeight is double ah && ah > 0)
+        {
+            aspectW = aw;
+            aspectH = ah;
+            return true;
+        }
+
+        aspectW = 0;
+        aspectH = 0;
+        return false;
+    }
+
+    public static IReadOnlyList<CropAspectPreset> CreateDefaults() => new[]
+    {
+        new CropAspectPreset("自由"),
+        new CropAspectPreset("1:1", 1, 1),
+        new CropAspectPreset("4:3", 4, 3),
+        new CropAspectPreset("3:4", 3, 4),
+        new CropAspectPreset("16:9", 16, 9),
+        new CropAspectPreset("9:16", 9, 16),
+        new CropAspectPreset("3:2", 3, 2),
+        new CropAspectPreset("2:3", 2, 3),
+        new CropAspectPreset("512×512", 1, 1, 512, 512),
+        new CropAspectPreset("768×768", 1, 1, 768, 768),
+        new CropAspectPreset("1024×1024", 1, 1, 1024, 1024),
+        new CropAspectPreset("1024×576 (16:9)", 16, 9, 1024, 576),
+        new CropAspectPreset("576×1024 (9:16)", 9, 16, 576, 1024),
+    };
 }

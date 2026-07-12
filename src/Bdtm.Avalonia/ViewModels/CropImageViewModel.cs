@@ -24,6 +24,8 @@ public partial class CropImageViewModel : ViewModelBase
         Regions.CollectionChanged += OnRegionsCollectionChanged;
         ExportedPaths = Array.Empty<string>();
         FileName = Path.GetFileName(ImagePath);
+        AspectPresets = new ObservableCollection<CropAspectPreset>(CropAspectPreset.CreateDefaults());
+        SelectedAspectPreset = AspectPresets[0];
 
         try
         {
@@ -39,6 +41,8 @@ public partial class CropImageViewModel : ViewModelBase
             ImageWidth = 0;
             ImageHeight = 0;
         }
+
+        UpdateStatusForPreset();
     }
 
     public string ImagePath { get; }
@@ -46,9 +50,11 @@ public partial class CropImageViewModel : ViewModelBase
     public int ImageWidth { get; private set; }
     public int ImageHeight { get; private set; }
     public ObservableCollection<CropRegion> Regions { get; }
+    public ObservableCollection<CropAspectPreset> AspectPresets { get; }
     public IReadOnlyList<string> ExportedPaths { get; private set; }
 
     [ObservableProperty] private CropRegion? selectedRegion;
+    [ObservableProperty] private CropAspectPreset? selectedAspectPreset;
     [ObservableProperty] private string statusMessage = "在图像上拖拽添加裁剪区域。";
 
     /// <summary>List rows for binding (#n w×h). Synced with <see cref="Regions"/>.</summary>
@@ -62,7 +68,19 @@ public partial class CropImageViewModel : ViewModelBase
             return;
         }
 
-        CropRect clamped = CropCanvasHelper.ClampToImage(rect, ImageWidth, ImageHeight);
+        CropRect final = rect;
+
+        // Fixed-size presets: snap to exact pixels (canvas may already do this; re-apply for safety).
+        if (SelectedAspectPreset is { HasFixedSize: true } preset
+            && preset.FixedWidth is int fw && preset.FixedHeight is int fh)
+        {
+            var (cx, cy) = CropCanvasHelper.RectCenter(CropCanvasHelper.ClampToImage(rect, ImageWidth, ImageHeight));
+            if (rect.IsEmpty)
+                (cx, cy) = (ImageWidth / 2, ImageHeight / 2);
+            final = CropCanvasHelper.PlaceFixedSize(cx, cy, fw, fh, ImageWidth, ImageHeight);
+        }
+
+        CropRect clamped = CropCanvasHelper.ClampToImage(final, ImageWidth, ImageHeight);
         if (clamped.Width < MinimumCropSize || clamped.Height < MinimumCropSize)
         {
             StatusMessage = $"选区过小（最小 {MinimumCropSize}×{MinimumCropSize}）。";
@@ -78,7 +96,30 @@ public partial class CropImageViewModel : ViewModelBase
         };
         Regions.Add(region);
         SelectedRegion = region;
-        StatusMessage = $"已添加区域 #{region.Index}（{region.Bounds.Width}×{region.Bounds.Height}）。";
+        string ratioNote = SelectedAspectPreset is null || SelectedAspectPreset.IsFree
+            ? ""
+            : $" · {SelectedAspectPreset.Name}";
+        StatusMessage = $"已添加区域 #{region.Index}（{region.Bounds.Width}×{region.Bounds.Height}）{ratioNote}。";
+    }
+
+    partial void OnSelectedAspectPresetChanged(CropAspectPreset? value) => UpdateStatusForPreset();
+
+    private void UpdateStatusForPreset()
+    {
+        if (SelectedAspectPreset is null || SelectedAspectPreset.IsFree)
+        {
+            StatusMessage = "自由比例：拖拽添加任意矩形。";
+            return;
+        }
+
+        if (SelectedAspectPreset.HasFixedSize)
+        {
+            StatusMessage =
+                $"固定 {SelectedAspectPreset.FixedWidth}×{SelectedAspectPreset.FixedHeight}：拖拽定位，松开后落到该像素尺寸（图更小时会夹紧）。";
+            return;
+        }
+
+        StatusMessage = $"锁定 {SelectedAspectPreset.Name}：拖拽时保持宽高比。";
     }
 
     [RelayCommand]
