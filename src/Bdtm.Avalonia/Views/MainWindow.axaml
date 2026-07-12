@@ -32,6 +32,8 @@
                   ToolTip.Tip="标签→自然语言，输出到旁系 _captioned（也在「工具」菜单）" />
         <MenuItem Header="角色标签审计…" Command="{Binding OpenCharacterTagAuditCommand}"
                   ToolTip.Tip="基于触发词与参考图审计角色相关标签" />
+        <MenuItem Header="裁剪当前图…" Command="{Binding CropCurrentImageCommand}"
+                  ToolTip.Tip="在当前图上拖拽多区域裁剪并导入数据集" />
         <MenuItem Header="刷新 ONNX 状态" Command="{Binding RefreshOnnxStatusUiCommand}" />
       </MenuItem>
       <MenuItem Header="视图(_V)">
@@ -41,6 +43,8 @@
                   IsChecked="{Binding ShowPaths, Mode=TwoWay}" />
       </MenuItem>
       <MenuItem Header="工具(_O)">
+        <MenuItem Header="裁剪当前图…" Command="{Binding CropCurrentImageCommand}"
+                  ToolTip.Tip="在当前图上拖拽多区域裁剪并导入数据集" />
         <MenuItem Header="视频工具…" Command="{Binding OpenVideoToolsCommand}" />
         <MenuItem Header="标签 Wiki…" Command="{Binding OpenWikiCommand}" />
         <MenuItem Header="TAG2NL…" Command="{Binding RunTag2NlCommand}"

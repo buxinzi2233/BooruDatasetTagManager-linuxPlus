@@ -1627,6 +1627,54 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private async Task CropCurrentImageAsync()
+    {
+        if (IsBusy) return;
+        if (SelectedImage is null)
+        {
+            StatusText = "请先选择一张图片。";
+            return;
+        }
+
+        string path = SelectedImage.Data.ImageFilePath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            StatusText = "图片不存在。";
+            return;
+        }
+
+        if (!ImageThumbnailLoader.IsRasterImage(path))
+        {
+            StatusText = "当前项不是可裁剪的光栅图片。";
+            return;
+        }
+
+        var window = GetMainWindow();
+        if (window is null) return;
+
+        var vm = new CropImageViewModel(path);
+        var dlg = new Views.CropImageWindow { DataContext = vm };
+        var ok = await dlg.ShowDialog<bool?>(window);
+        if (ok != true || vm.ExportedPaths.Count == 0)
+        {
+            StatusText = "已取消裁剪。";
+            return;
+        }
+
+        var added = _dataset.AddImages(vm.ExportedPaths);
+        bool showPaths = ShowPaths;
+        foreach (string p in added)
+        {
+            if (_dataset.DataSet.TryGetValue(p, out var data))
+                Images.Add(new ImageListItem(data) { ShowFullPath = showPaths });
+        }
+
+        HasNoImages = Images.Count == 0;
+        StatusText = $"已导入裁剪图 {added.Count} 张 · 导出 {vm.ExportedPaths.Count} 张";
+        _ = LoadThumbnailsAsync();
+    }
+
     private static Window? GetMainWindow()
     {
         if (global::Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
