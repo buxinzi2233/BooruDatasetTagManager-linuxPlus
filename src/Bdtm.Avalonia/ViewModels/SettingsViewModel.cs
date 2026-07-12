@@ -38,7 +38,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string llmTag2NlSystemPrompt = string.Empty;
     [ObservableProperty] private int llmTag2NlConcurrency = 5;
     [ObservableProperty] private string characterTagAuditModel = string.Empty;
-    [ObservableProperty] private string aiApiEndpoint = "http://127.0.0.1:7866";
+    [ObservableProperty] private string aiApiEndpoint = "http://127.0.0.1:50051";
     [ObservableProperty] private string statusMessage = string.Empty;
     [ObservableProperty] private string configPathDisplay = string.Empty;
     [ObservableProperty] private string defaultModelsHint = string.Empty;
@@ -70,7 +70,7 @@ public partial class SettingsViewModel : ViewModelBase
         LlmTag2NlSystemPrompt = _settings.Llm.Tag2NlSystemPrompt;
         LlmTag2NlConcurrency = _settings.Llm.Tag2NlConcurrency;
         CharacterTagAuditModel = _settings.CharacterTagAuditModel ?? string.Empty;
-        AiApiEndpoint = _settings.AiApiEndpoint ?? "http://127.0.0.1:7866";
+        AiApiEndpoint = _settings.AiApiEndpoint ?? "http://127.0.0.1:50051";
         ConfigPathDisplay = AppPaths.SettingsFilePath;
         DefaultModelsHint = AppPaths.DefaultModelsDir;
         StatusMessage = string.Empty;
