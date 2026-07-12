@@ -131,6 +131,38 @@ public sealed class DatasetManager
         return true;
     }
 
+    /// <summary>
+    /// Adds image paths into the dataset (e.g. cropped region files).
+    /// Skips missing, unsupported, and already-present paths.
+    /// </summary>
+    public IReadOnlyList<string> AddImages(IEnumerable<string> paths)
+    {
+        if (paths is null)
+            return Array.Empty<string>();
+
+        var added = new List<string>();
+        foreach (string path in paths.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                continue;
+            if (!MediaExtensions.IsSupportedMedia(path))
+                continue;
+
+            string full = Path.GetFullPath(path);
+            if (_dataSet.ContainsKey(full))
+                continue;
+
+            var item = DataItem.Create(full, Options);
+            item.ImageFilePath = full;
+            if (_dataSet.TryAdd(item.ImageFilePath, item))
+                added.Add(item.ImageFilePath);
+        }
+
+        if (added.Count > 0)
+            UpdateDatasetHash();
+        return added;
+    }
+
     public void AddTagToAll(string tag, bool skipExist = true, bool useFilter = false)
     {
         foreach (var item in Enumerate(useFilter))

@@ -146,4 +146,54 @@ public class DatasetManagerTests : IDisposable
         var items = PromptParser.ParsePrompt(" 1Girl, Solo , SMILE ", fixTagsForWeight: false, ",");
         Assert.Equal(new[] { "1girl", "solo", "smile" }, items.Select(i => i.Text).ToArray());
     }
+
+    [Fact]
+    public void AddImages_AddsNewPaths_AndSkipsDuplicates()
+    {
+        string existing = Path.Combine(_tempRoot, "base.png");
+        string crop1 = Path.Combine(_tempRoot, "base_r1.png");
+        string crop2 = Path.Combine(_tempRoot, "base_r2.png");
+        WriteImageStub(existing);
+        WriteImageStub(crop1);
+        WriteImageStub(crop2);
+
+        var manager = new DatasetManager();
+        Assert.True(manager.LoadFromFolder(_tempRoot, DefaultOptions()));
+        Assert.Equal(3, manager.DataSet.Count);
+
+        // clear and re-add selectively
+        manager = new DatasetManager();
+        manager.LoadFromFolder(_tempRoot, DefaultOptions());
+        // remove crops so only base remains
+        Assert.True(manager.Remove(Path.GetFullPath(crop1)));
+        Assert.True(manager.Remove(Path.GetFullPath(crop2)));
+        Assert.Equal(1, manager.DataSet.Count);
+
+        IReadOnlyList<string> added = manager.AddImages(new[] { crop1, crop2, crop1, existing });
+        Assert.Equal(2, added.Count);
+        Assert.Contains(Path.GetFullPath(crop1), added);
+        Assert.Contains(Path.GetFullPath(crop2), added);
+        Assert.Equal(3, manager.DataSet.Count);
+
+        // second call skips all duplicates
+        IReadOnlyList<string> addedAgain = manager.AddImages(new[] { crop1, crop2 });
+        Assert.Empty(addedAgain);
+        Assert.Equal(3, manager.DataSet.Count);
+    }
+
+    [Fact]
+    public void AddImages_SkipsMissingAndUnsupported()
+    {
+        string img = Path.Combine(_tempRoot, "ok.png");
+        WriteImageStub(img);
+        string missing = Path.Combine(_tempRoot, "gone.png");
+        string unsupported = Path.Combine(_tempRoot, "notes.txt");
+        File.WriteAllText(unsupported, "not an image");
+
+        var manager = new DatasetManager();
+        IReadOnlyList<string> added = manager.AddImages(new[] { img, missing, unsupported, "  " });
+        Assert.Single(added);
+        Assert.Equal(Path.GetFullPath(img), added[0]);
+        Assert.Single(manager.DataSet);
+    }
 }
