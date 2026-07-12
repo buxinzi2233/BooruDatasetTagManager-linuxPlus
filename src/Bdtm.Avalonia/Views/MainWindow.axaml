@@ -28,6 +28,10 @@
         <MenuItem Header="ONNX 打标全部" Command="{Binding RunOnnxOnAllCommand}" />
         <MenuItem Header="取消批量" Command="{Binding CancelBatchCommand}" />
         <Separator />
+        <MenuItem Header="查找替换…" Command="{Binding ReplaceTagCommand}" />
+        <MenuItem Header="图片网格…" Command="{Binding ShowTagImagesCommand}"
+                  ToolTip.Tip="查看并管理选中标签的图片网格" />
+        <Separator />
         <MenuItem Header="TAG2NL 整库 caption…" Command="{Binding RunTag2NlCommand}"
                   ToolTip.Tip="标签→自然语言，输出到旁系 _captioned（也在「工具」菜单）" />
         <MenuItem Header="角色标签审计…" Command="{Binding OpenCharacterTagAuditCommand}"

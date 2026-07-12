@@ -1,0 +1,66 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Bdtm.Avalonia.ViewModels"
+        x:Class="Bdtm.Avalonia.Views.TagImagesWindow"
+        x:DataType="vm:TagImagesViewModel"
+        Width="900" Height="700"
+        MinWidth="600" MinHeight="400"
+        Title="{Binding Title}"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+  <DockPanel Margin="12">
+    <!-- Bottom: zoom slider + buttons -->
+    <Border DockPanel.Dock="Bottom" Margin="0,8,0,0" Padding="0,8,0,0"
+            BorderBrush="#3f3f46" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="Auto,140,*,Auto,Auto">
+        <TextBlock Text="缩略图大小:" VerticalAlignment="Center" Margin="0,0,8,0" Opacity="0.85" />
+        <Slider Grid.Column="1" Minimum="50" Maximum="200"
+                Value="{Binding ThumbnailSize}"
+                VerticalAlignment="Center" />
+        <TextBlock Grid.Column="2" Text="{Binding ThumbnailSize, StringFormat={}{0} px}"
+                   VerticalAlignment="Center" Margin="8,0,0,0" Opacity="0.85" />
+        <Button Grid.Column="3" Content="确定" Click="Ok_Click" MinWidth="88"
+                Padding="14,7" FontWeight="SemiBold" Margin="0,0,8,0" />
+        <Button Grid.Column="4" Content="取消" Click="Cancel_Click" MinWidth="88" Padding="14,7" />
+      </Grid>
+    </Border>
+
+    <!-- Top: summary -->
+    <Border DockPanel.Dock="Top" Margin="0,0,0,8" Padding="8,6" Background="#2d2d30"
+            BorderBrush="#3f3f46" BorderThickness="0,0,0,1">
+      <TextBlock Text="{Binding Summary}" Opacity="0.85" />
+    </Border>
+
+    <!-- Image grid -->
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <ItemsControl ItemsSource="{Binding Items}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Left" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:TagImageItem">
+            <Border Margin="4" Padding="6" BorderBrush="#3f3f46" BorderThickness="1"
+                    CornerRadius="2" Background="#1e1e1e"
+                    Width="{Binding CardWidth}">
+              <StackPanel>
+                <Border Width="{Binding ThumbSize}" Height="{Binding ThumbSize}"
+                        Background="#2d2d30" CornerRadius="2" ClipToBounds="True"
+                        BorderBrush="#555" BorderThickness="1"
+                        HorizontalAlignment="Center">
+                  <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+                </Border>
+                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"
+                           FontSize="11" HorizontalAlignment="Center" Margin="0,4,0,2"
+                           MaxWidth="{Binding ThumbSize}" />
+                <CheckBox IsChecked="{Binding HasTag}" Content="含标签"
+                          HorizontalAlignment="Center" FontSize="11" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

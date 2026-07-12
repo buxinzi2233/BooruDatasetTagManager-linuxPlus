@@ -58,6 +58,7 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<ImageListItem> Images { get; }
     public ObservableCollection<TagRow> CurrentTags { get; }
     public ObservableCollection<TagCountRow> GlobalTags { get; }
+    public ObservableCollection<string> AllTagsList { get; } = new();
     public ObservableCollection<TagRow> FilteredCurrentTags { get; } = new();
     public ObservableCollection<TagCountRow> FilteredGlobalTags { get; } = new();
     public ObservableCollection<ImageListItem> SelectedImages { get; } = new();
@@ -708,6 +709,7 @@ public partial class MainViewModel : ViewModelBase
     private void RebuildGlobalTags()
     {
         GlobalTags.Clear();
+        AllTagsList.Clear();
         foreach (var item in TagStatistics.Build(_dataset.DataSet.Values, _zhLookup))
         {
             GlobalTags.Add(new TagCountRow
@@ -716,6 +718,7 @@ public partial class MainViewModel : ViewModelBase
                 Count = item.Count,
                 Chinese = item.Chinese,
             });
+            AllTagsList.Add(item.Tag);
         }
         ApplyGlobalTagFilter();
     }
@@ -1673,6 +1676,75 @@ public partial class MainViewModel : ViewModelBase
         HasNoImages = Images.Count == 0;
         StatusText = $"已导入裁剪图 {added.Count} 张 · 导出 {vm.ExportedPaths.Count} 张";
         _ = LoadThumbnailsAsync();
+    }
+
+    [RelayCommand]
+    private async Task ReplaceTagAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_dataset.DatasetRoot) || _dataset.DataSet.Count == 0)
+        {
+            StatusText = "请先打开数据集文件夹。";
+            return;
+        }
+
+        var window = GetMainWindow();
+        if (window is null) return;
+
+        var dlg = new Views.ReplaceAllWindow();
+        dlg.SetAllTags(AllTagsList);
+
+        var result = await dlg.ShowDialog<bool?>(window);
+        if (result != true) return;
+
+        string? src = dlg.SourceTag;
+        string? dst = dlg.NewTag;
+
+        if (string.IsNullOrWhiteSpace(src))
+        {
+            StatusText = "请选择源标签。";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(dst))
+        {
+            StatusText = "新标签不能为空。";
+            return;
+        }
+
+        _dataset.ReplaceTagInAll(src, dst);
+        RebuildGlobalTags();
+        ReloadCurrentTags();
+        StatusText = $"已替换: 「{src}」→「{dst}」";
+    }
+
+    [RelayCommand]
+    private async Task ShowTagImagesAsync()
+    {
+        string? tag = SelectedTag?.Tag ?? SelectedGlobalTag?.Tag;
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            StatusText = "请先在当前标签或全部标签中选中一个标签。";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_dataset.DatasetRoot) || _dataset.DataSet.Count == 0)
+        {
+            StatusText = "请先打开数据集文件夹。";
+            return;
+        }
+
+        var window = GetMainWindow();
+        if (window is null) return;
+
+        var vm = new TagImagesViewModel(tag, _dataset.DataSet.Values.ToList());
+        var dlg = new Views.TagImagesWindow { DataContext = vm };
+        var result = await dlg.ShowDialog<bool?>(window);
+        if (result != true) return;
+
+        vm.Apply();
+        ReloadCurrentTags();
+        RebuildGlobalTags();
+        StatusText = $"已更新标签「{tag}」的图片标记。";
     }
 
     private static Window? GetMainWindow()
