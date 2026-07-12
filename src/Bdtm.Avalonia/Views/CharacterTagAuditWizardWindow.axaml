@@ -1,0 +1,154 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Bdtm.Avalonia.ViewModels"
+        x:Class="Bdtm.Avalonia.Views.CharacterTagAuditWizardWindow"
+        x:DataType="vm:CharacterTagAuditWizardViewModel"
+        Width="1100" Height="760"
+        MinWidth="900" MinHeight="650"
+        Title="角色标签审计"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+  <DockPanel Margin="14">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Opacity="0.85"
+                 MaxWidth="520" TextWrapping="Wrap" Margin="0,0,12,0" />
+      <Button Content="取消" Command="{Binding CancelCommand}" MinWidth="88" />
+      <Button Content="{Binding NextButtonText}" Command="{Binding NextCommand}"
+              IsEnabled="{Binding CanGoNext}" MinWidth="96" />
+    </StackPanel>
+
+    <!-- Page 0: Setup -->
+    <Grid IsVisible="{Binding IsSetupPage}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1.1*" />
+        <ColumnDefinition Width="12" />
+        <ColumnDefinition Width="0.9*" />
+      </Grid.ColumnDefinitions>
+
+      <StackPanel Spacing="8">
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="设置" />
+        <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                   Text="选择触发词、风格、模式与参考图，然后开始文本筛选 + 视觉审阅。" />
+
+        <TextBlock Opacity="0.8" Text="触发词（可从候选选择，也可直接输入）" />
+        <TextBox Text="{Binding TriggerText}" Watermark="触发词" />
+        <ComboBox ItemsSource="{Binding TriggerCandidates}"
+                  SelectedItem="{Binding SelectedTriggerCandidate}"
+                  PlaceholderText="从候选选择…"
+                  HorizontalAlignment="Stretch" />
+
+        <Grid ColumnDefinitions="*,12,*">
+          <StackPanel>
+            <TextBlock Opacity="0.8" Text="风格" />
+            <ComboBox ItemsSource="{Binding StyleChoices}" SelectedItem="{Binding SelectedStyle}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2">
+            <TextBlock Opacity="0.8" Text="模式" />
+            <ComboBox ItemsSource="{Binding ModeChoices}" SelectedItem="{Binding SelectedMode}" />
+          </StackPanel>
+        </Grid>
+
+        <TextBlock Opacity="0.8" Text="最小出现次数" />
+        <NumericUpDown Minimum="1" Maximum="100000" Increment="1" Value="{Binding MinimumCount}" />
+
+        <TextBlock Opacity="0.8" Text="审计模型（可留空回退 Vision 模型）" />
+        <TextBox Text="{Binding AuditModel}" Watermark="留空 = 设置中的审计/Vision 模型" />
+      </StackPanel>
+
+      <DockPanel Grid.Column="2">
+        <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Text="参考图（必选一张）" Margin="0,0,0,6" />
+        <TextBlock DockPanel.Dock="Bottom" Opacity="0.7" Margin="0,6,0,0" TextWrapping="Wrap"
+                   Text="{Binding SelectedImage.Path, FallbackValue=未选择}" />
+        <ListBox ItemsSource="{Binding Images}"
+                 SelectedItem="{Binding SelectedImage}"
+                 MinHeight="360">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:CharacterTagAuditImageItem">
+              <StackPanel Spacing="1" Margin="2,3">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Path}" Opacity="0.65" FontSize="11" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Grid>
+
+    <!-- Page 1: Progress -->
+    <StackPanel IsVisible="{Binding IsProgressPage}" VerticalAlignment="Center" Spacing="16" Margin="40,0">
+      <TextBlock FontWeight="SemiBold" FontSize="16" Text="审计进行中…" HorizontalAlignment="Center" />
+      <ProgressBar Minimum="0" Maximum="{Binding ProgressMaximum}" Value="{Binding ProgressValue}" Height="14" />
+      <TextBlock Text="{Binding ProgressText}" HorizontalAlignment="Center" Opacity="0.85" />
+      <TextBlock Opacity="0.65" HorizontalAlignment="Center" Text="可点「取消」中止当前请求。" />
+    </StackPanel>
+
+    <!-- Page 2: Review / Apply -->
+    <DockPanel IsVisible="{Binding IsReviewPage}">
+      <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
+        <TextBlock Text="{Binding SummaryText}" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding MetricsText}" Opacity="0.8" FontSize="12" TextWrapping="Wrap" />
+        <TextBlock Opacity="0.8" Text="最终提示词" />
+        <Grid ColumnDefinitions="*,8,Auto">
+          <TextBox Text="{Binding FinalPrompt}" AcceptsReturn="True" TextWrapping="Wrap"
+                   MinHeight="56" MaxHeight="110" IsReadOnly="True" />
+          <Button Grid.Column="2" Content="复制" Click="CopyPrompt_Click" MinWidth="72"
+                  VerticalAlignment="Top" />
+        </Grid>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="重做视觉审阅" Command="{Binding RedoVisualCommand}"
+                  IsEnabled="{Binding CanRedoVisual}" />
+          <Button Content="{Binding ExcludedHeader}" Command="{Binding ToggleExcludedCommand}" />
+        </StackPanel>
+        <ListBox ItemsSource="{Binding ExcludedItems}"
+                 IsVisible="{Binding ShowExcluded}"
+                 MaxHeight="120"
+                 MinHeight="60">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Tag}" ToolTip.Tip="{Binding Count}" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </StackPanel>
+
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="0,0,0,8">
+          <TextBlock VerticalAlignment="Center" Opacity="0.8" Text="筛选" />
+          <TextBox Width="220" Text="{Binding ReviewSearch}" Watermark="搜索标签…" />
+          <CheckBox Content="仅显示删除/替换" IsChecked="{Binding ShowDeleteReplaceOnly}"
+                    VerticalAlignment="Center" />
+        </StackPanel>
+
+        <DataGrid ItemsSource="{Binding ReviewRows}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="False"
+                  CanUserReorderColumns="False"
+                  CanUserSortColumns="True"
+                  GridLinesVisibility="Horizontal"
+                  BorderThickness="1"
+                  BorderBrush="#3f3f46">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="标签" Binding="{Binding Tag}" IsReadOnly="True" Width="1.4*" MinWidth="90" />
+            <DataGridTextColumn Header="次数" Binding="{Binding Count}" IsReadOnly="True" Width="64" />
+            <DataGridTextColumn Header="类别" Binding="{Binding CategoryDisplay}" IsReadOnly="True" Width="80" />
+            <DataGridTextColumn Header="初判" Binding="{Binding InitialDisplay}" IsReadOnly="True" Width="72" />
+            <DataGridTemplateColumn Header="终判" Width="110" MinWidth="96">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate x:DataType="vm:CharacterTagAuditReviewRow">
+                  <ComboBox ItemsSource="{Binding DecisionChoices}"
+                            SelectedItem="{Binding SelectedDecision}"
+                            IsEnabled="{Binding CanModify}"
+                            HorizontalAlignment="Stretch"
+                            MinWidth="88" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="替换为" Binding="{Binding ReplacementTag}" Width="1.1*" MinWidth="80" />
+            <DataGridCheckBoxColumn Header="入提示" Binding="{Binding IncludeInPrompt}" Width="72" />
+            <DataGridTextColumn Header="理由" Binding="{Binding Reason}" IsReadOnly="True" Width="1.6*" MinWidth="100" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+    </DockPanel>
+  </DockPanel>
+</Window>

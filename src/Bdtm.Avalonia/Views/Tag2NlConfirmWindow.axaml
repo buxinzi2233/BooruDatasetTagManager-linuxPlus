@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Bdtm.Avalonia.ViewModels"
+        x:Class="Bdtm.Avalonia.Views.Tag2NlConfirmWindow"
+        x:DataType="vm:Tag2NlConfirmViewModel"
+        Width="640" Height="340"
+        MinWidth="540" MinHeight="300"
+        Title="确认 TAG2NL"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        ShowInTaskbar="False">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Bottom" Spacing="12">
+      <CheckBox Content="重新生成已有输出"
+                IsChecked="{Binding ReprocessExisting}" />
+      <StackPanel Orientation="Horizontal"
+                  HorizontalAlignment="Right"
+                  Spacing="10">
+        <Button Content="开始"
+                Click="Start_Click"
+                MinWidth="100"
+                Padding="16,7"
+                FontWeight="SemiBold" />
+        <Button Content="取消"
+                Click="Cancel_Click"
+                MinWidth="100"
+                Padding="14,7" />
+      </StackPanel>
+    </StackPanel>
+
+    <TextBox Text="{Binding SummaryText}"
+             IsReadOnly="True"
+             AcceptsReturn="True"
+             TextWrapping="Wrap"
+             VerticalAlignment="Stretch"
+             VerticalContentAlignment="Top" />
+  </DockPanel>
+</Window>

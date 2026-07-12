@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Bdtm.Avalonia.Views.ReplaceAllWindow"
+        Width="480" Height="260"
+        MinWidth="400" MinHeight="220"
+        Title="查找替换全部"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False">
+  <StackPanel Margin="16" Spacing="10" VerticalAlignment="Center">
+    <TextBlock Text="警告：此操作将替换数据集中所有图片的标签，不可撤销。"
+               TextWrapping="Wrap" Foreground="#ff8c00" />
+    <TextBlock Text="源标签（要替换的标签）：" />
+    <ComboBox x:Name="SourceTagCombo" HorizontalAlignment="Stretch" MinHeight="28" />
+    <TextBlock Text="新标签（替换为）：" />
+    <TextBox x:Name="NewTagTextBox" Watermark="输入新标签" HorizontalAlignment="Stretch" MinHeight="28" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,8,0,0">
+      <Button Content="确定" Click="Ok_Click" MinWidth="88" Padding="14,7" FontWeight="SemiBold" />
+      <Button Content="取消" Click="Cancel_Click" MinWidth="88" Padding="14,7" />
+    </StackPanel>
+  </StackPanel>
+</Window>

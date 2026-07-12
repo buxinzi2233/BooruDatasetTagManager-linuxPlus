@@ -1,0 +1,107 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Bdtm.Avalonia.ViewModels"
+        x:Class="Bdtm.Avalonia.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Width="580" Height="720"
+        MinWidth="480" MinHeight="520"
+        Title="设置"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Opacity="0.8" Margin="0,0,12,0" MaxWidth="280" TextWrapping="Wrap" />
+      <Button Content="保存" Command="{Binding SaveCommand}" MinWidth="88" />
+      <Button Content="关闭" Click="Close_Click" MinWidth="88" />
+    </StackPanel>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="10">
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="常规" />
+        <TextBlock Opacity="0.7" Text="{Binding ConfigPathDisplay, StringFormat=配置文件: {0}}" TextWrapping="Wrap" FontSize="11" />
+
+        <TextBlock Opacity="0.8" Text="UI 语言代码（预留）" />
+        <TextBox Text="{Binding Language}" />
+
+        <TextBlock Opacity="0.8" Text="加载分隔符" />
+        <TextBox Text="{Binding SeparatorOnLoad}" />
+        <TextBlock Opacity="0.8" Text="保存分隔符" />
+        <TextBox Text="{Binding SeparatorOnSave}" />
+        <TextBlock Opacity="0.8" Text="默认标签扩展名" />
+        <TextBox Text="{Binding DefaultTagsFileExtension}" />
+
+        <CheckBox Content="加载/保存时规范化权重标签" IsChecked="{Binding FixTagsOnSaveLoad}" />
+        <CheckBox Content="关闭前提示未保存" IsChecked="{Binding AskSaveChanges}" />
+
+        <TextBlock Opacity="0.8" Text="缩略图边长 (px)" />
+        <NumericUpDown Minimum="48" Maximum="256" Increment="8" Value="{Binding PreviewSize}" />
+
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="ONNX / 模型" />
+        <TextBlock Opacity="0.7" Text="{Binding DefaultModelsHint, StringFormat=默认 Models: {0}}" TextWrapping="Wrap" FontSize="11" />
+        <TextBlock Opacity="0.8" Text="Models 根目录" />
+        <Grid ColumnDefinitions="*,8,Auto">
+          <TextBox Text="{Binding ModelsPath}" />
+          <Button Grid.Column="2" Content="恢复默认" Command="{Binding ResetModelsPathCommand}" />
+        </Grid>
+        <TextBlock Opacity="0.8" Text="默认模型 repo" />
+        <TextBox Text="{Binding OnnxModelRepo}" />
+        <Grid ColumnDefinitions="*,12,*">
+          <StackPanel>
+            <TextBlock Opacity="0.8" Text="General 阈值" />
+            <NumericUpDown Minimum="0" Maximum="1" Increment="0.01" Value="{Binding GeneralThreshold}" FormatString="0.00" />
+          </StackPanel>
+          <StackPanel Grid.Column="2">
+            <TextBlock Opacity="0.8" Text="Character 阈值" />
+            <NumericUpDown Minimum="0" Maximum="1" Increment="0.01" Value="{Binding CharacterThreshold}" FormatString="0.00" />
+          </StackPanel>
+        </Grid>
+
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="FFmpeg" />
+        <TextBlock Opacity="0.8" Text="FFmpeg 路径（目录或可执行文件，可留空走 PATH）" />
+        <TextBox Text="{Binding FfmpegPath}" />
+
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="LLM 视觉打标（OpenAI 兼容）" />
+        <TextBlock Opacity="0.7" FontSize="11" TextWrapping="Wrap"
+                   Text="Endpoint 通常形如 https://api.openai.com/v1 或兼容网关的 /v1 根路径。向下滚动可配置 TAG2NL 并行数与提示词。" />
+        <TextBlock Opacity="0.8" Text="Endpoint" />
+        <TextBox Text="{Binding LlmEndpoint}" />
+        <TextBlock Opacity="0.8" Text="API Key" />
+        <TextBox Text="{Binding LlmApiKey}" PasswordChar="*" />
+        <TextBlock Opacity="0.8" Text="Vision 模型" />
+        <TextBox Text="{Binding LlmVisionModel}" />
+        <TextBlock Opacity="0.8" Text="超时（秒）" />
+        <NumericUpDown Minimum="10" Maximum="3600" Increment="10" Value="{Binding LlmTimeoutSeconds}" />
+        <TextBlock Opacity="0.8" Text="System Prompt（视觉打标）" />
+        <TextBox Text="{Binding LlmSystemPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" />
+        <TextBlock Opacity="0.8" Text="User Prompt（视觉打标）" />
+        <TextBox Text="{Binding LlmUserPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="56" />
+
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="TAG2NL（标签→自然语言）" />
+        <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                   Text="连接与 Vision 模型同上；下列仅影响「工具 → TAG2NL…」整库批量。并行数在提示词上方。" />
+        <TextBlock Opacity="0.8" Text="TAG2NL 并行数 (1–100)" />
+        <NumericUpDown Minimum="1" Maximum="100" Increment="1" Value="{Binding LlmTag2NlConcurrency}" />
+        <TextBlock Opacity="0.8" Text="TAG2NL 系统提示词" />
+        <TextBox Text="{Binding LlmTag2NlSystemPrompt}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="96" />
+
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="角色标签审计" />
+        <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                   Text="用于「工具 / 打标 → 角色标签审计…」。留空则回退到上方 Vision 模型。" />
+        <TextBlock Opacity="0.8" Text="审计模型" />
+        <TextBox Text="{Binding CharacterTagAuditModel}" Watermark="留空 = 使用 Vision 模型" />
+
+        <Separator />
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="AiApi 去背景" />
+        <TextBlock Opacity="0.75" TextWrapping="Wrap"
+                   Text="用于「工具 → 去背景…」功能。指向运行中的 AiApiServer。" />
+        <TextBlock Opacity="0.8" Text="Endpoint" />
+        <TextBox Text="{Binding AiApiEndpoint}" Watermark="http://127.0.0.1:7866" />
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

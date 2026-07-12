@@ -1,0 +1,357 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Bdtm.Avalonia.ViewModels"
+        xmlns:onnx="using:Bdtm.Onnx"
+        x:Class="Bdtm.Avalonia.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Width="1500" Height="900"
+        MinWidth="1100" MinHeight="680"
+        Title="Booru Dataset Tag Manager (Linux)">
+
+  <Design.DataContext>
+    <vm:MainViewModel />
+  </Design.DataContext>
+
+  <DockPanel>
+    <Menu DockPanel.Dock="Top">
+      <MenuItem Header="文件(_F)">
+        <MenuItem Header="打开数据集文件夹…" Command="{Binding OpenFolderCommand}" />
+        <MenuItem Header="保存标签" Command="{Binding SaveCommand}" HotKey="Ctrl+S" />
+        <Separator />
+        <MenuItem Header="设置…" Command="{Binding OpenSettingsCommand}" />
+        <MenuItem Header="快速保存当前 ONNX 阈值" Command="{Binding SaveSettingsCommand}" />
+      </MenuItem>
+      <MenuItem Header="打标(_T)">
+        <MenuItem Header="LLM 视觉打标当前图" Command="{Binding RunLlmOnCurrentCommand}" />
+        <MenuItem Header="ONNX 打标当前图" Command="{Binding RunOnnxOnCurrentCommand}" />
+        <MenuItem Header="ONNX 打标选中图" Command="{Binding RunOnnxOnSelectedCommand}" />
+        <MenuItem Header="ONNX 打标全部" Command="{Binding RunOnnxOnAllCommand}" />
+        <MenuItem Header="取消批量" Command="{Binding CancelBatchCommand}" />
+        <Separator />
+        <MenuItem Header="查找替换…" Command="{Binding ReplaceTagCommand}" />
+        <MenuItem Header="图片网格…" Command="{Binding ShowTagImagesCommand}"
+                  ToolTip.Tip="查看并管理选中标签的图片网格" />
+        <Separator />
+        <MenuItem Header="TAG2NL 整库 caption…" Command="{Binding RunTag2NlCommand}"
+                  ToolTip.Tip="标签→自然语言，输出到旁系 _captioned（也在「工具」菜单）" />
+        <MenuItem Header="角色标签审计…" Command="{Binding OpenCharacterTagAuditCommand}"
+                  ToolTip.Tip="基于触发词与参考图审计角色相关标签" />
+        <MenuItem Header="裁剪当前图…" Command="{Binding CropCurrentImageCommand}"
+                  ToolTip.Tip="在当前图上拖拽多区域裁剪并导入数据集" />
+        <MenuItem Header="刷新 ONNX 状态" Command="{Binding RefreshOnnxStatusUiCommand}" />
+      </MenuItem>
+      <MenuItem Header="视图(_V)">
+        <!-- TwoWay is required: MenuItem IsChecked defaults to one-way and never wrote ShowPaths -->
+        <MenuItem Header="显示完整路径"
+                  ToggleType="CheckBox"
+                  IsChecked="{Binding ShowPaths, Mode=TwoWay}" />
+      </MenuItem>
+      <MenuItem Header="工具(_O)">
+        <MenuItem Header="裁剪当前图…" Command="{Binding CropCurrentImageCommand}"
+                  ToolTip.Tip="在当前图上拖拽多区域裁剪并导入数据集" />
+        <MenuItem Header="视频工具…" Command="{Binding OpenVideoToolsCommand}" />
+        <MenuItem Header="去背景…" Command="{Binding OpenBgRemovalCommand}" />
+        <MenuItem Header="标签 Wiki…" Command="{Binding OpenWikiCommand}" />
+        <MenuItem Header="TAG2NL…" Command="{Binding RunTag2NlCommand}"
+                  ToolTip.Tip="整库标签→自然语言 caption，输出到旁系 _captioned 目录" />
+        <MenuItem Header="角色标签审计…" Command="{Binding OpenCharacterTagAuditCommand}"
+                  ToolTip.Tip="基于触发词与参考图审计角色相关标签" />
+        <MenuItem Header="设置…" Command="{Binding OpenSettingsCommand}" />
+      </MenuItem>
+    </Menu>
+
+    <Border DockPanel.Dock="Bottom" Padding="8,4" Background="#2d2d30" BorderBrush="#3f3f46" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto,160,Auto">
+        <TextBlock Text="{Binding StatusText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                   VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Text="{Binding BatchStatus}" Margin="12,0"
+                   Opacity="0.85" IsVisible="{Binding IsBatchRunning}" VerticalAlignment="Center" />
+        <ProgressBar Grid.Column="2" Height="10" Margin="8,0"
+                     Minimum="0" Maximum="100" Value="{Binding BatchProgress}"
+                     IsVisible="{Binding IsBatchRunning}" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="3" Text="{Binding ProviderText}" Margin="12,0,0,0"
+                   Opacity="0.85" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <Grid ColumnDefinitions="0.95*,1.15*,1*" Margin="6">
+      <!-- LEFT: dataset -->
+      <Border Margin="0,0,4,0" Background="#252526" BorderBrush="#3f3f46" BorderThickness="1" CornerRadius="2">
+        <DockPanel>
+          <Border DockPanel.Dock="Top" Padding="8,6" Background="#2d2d30" BorderBrush="#3f3f46" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock FontWeight="SemiBold" VerticalAlignment="Center"
+                         Text="{Binding DatasetPath, StringFormat=数据集  {0}}"
+                         TextTrimming="CharacterEllipsis"
+                         ToolTip.Tip="{Binding DatasetPath}" />
+              <Button Grid.Column="1" Content="打开…" Padding="10,2"
+                      Command="{Binding OpenFolderCommand}" />
+            </Grid>
+          </Border>
+
+          <TextBlock DockPanel.Dock="Top"
+                     Margin="12,16"
+                     Opacity="0.55"
+                     TextAlignment="Center"
+                     TextWrapping="Wrap"
+                     Text="打开数据集文件夹后，图片将显示在此列表。"
+                     IsVisible="{Binding HasNoImages}" />
+
+          <ListBox x:Name="ImageList"
+                   ItemsSource="{Binding Images}"
+                   SelectedItem="{Binding SelectedImage}"
+                   SelectionMode="Multiple"
+                   SelectionChanged="ImageList_OnSelectionChanged"
+                   Background="Transparent"
+                   BorderThickness="0">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:ImageListItem">
+                <Grid ColumnDefinitions="56,*" Margin="4,3" MinHeight="56">
+                  <Border Width="52" Height="52" Background="#1e1e1e"
+                          CornerRadius="2" ClipToBounds="True" BorderBrush="#3f3f46" BorderThickness="1">
+                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="8,0,4,0" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Path}"
+                               IsVisible="{Binding ShowFullPath}"
+                               Opacity="0.7" FontSize="11"
+                               TextWrapping="Wrap"
+                               MaxHeight="36"
+                               ToolTip.Tip="{Binding Path}" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+
+      <!-- CENTER: current tags + vertical tool rail on the RIGHT (original) -->
+      <Border Grid.Column="1" Margin="4,0" Background="#1e1e1e"
+              BorderBrush="#3f3f46" BorderThickness="1" CornerRadius="2">
+        <Grid ColumnDefinitions="*,44">
+          <DockPanel>
+            <Border DockPanel.Dock="Top" Padding="8,6" Background="#2d2d30"
+                    BorderBrush="#3f3f46" BorderThickness="0,0,0,1">
+              <StackPanel Spacing="6">
+                <TextBox Watermark="新标签" Text="{Binding NewTagText}" MinHeight="28" />
+                <TextBox Watermark="过滤当前标签（英文 / 中文）" Text="{Binding CurrentTagFilter}" MinHeight="28" />
+              </StackPanel>
+            </Border>
+
+            <DataGrid ItemsSource="{Binding FilteredCurrentTags}"
+                      SelectedItem="{Binding SelectedTag}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="False"
+                      CanUserReorderColumns="False"
+                      CanUserResizeColumns="True"
+                      CanUserSortColumns="False"
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column"
+                      BorderThickness="0"
+                      SelectionMode="Single"
+                      Background="Transparent"
+                      RowHeight="28"
+                      ColumnHeaderHeight="32">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="标签" Binding="{Binding Tag}" Width="2*" MinWidth="80" />
+                <DataGridTextColumn Header="中文" Binding="{Binding Chinese}" Width="*" MinWidth="60" IsReadOnly="True" />
+                <DataGridTextColumn Header=" 权重 " Binding="{Binding Weight}" Width="80" MinWidth="80" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </DockPanel>
+
+          <!-- Side toolbar sits between center tags and right pane (original) -->
+          <Border Grid.Column="1" Background="#2d2d30" BorderBrush="#3f3f46" BorderThickness="1,0,0,0">
+            <StackPanel Margin="4,8" Spacing="6" HorizontalAlignment="Center">
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding AddTagCommand}"
+                      ToolTip.Tip="添加标签（使用上方输入框内容）"
+                      Content="+" FontSize="16" FontWeight="Bold" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding RemoveSelectedTagRowsCommand}"
+                      ToolTip.Tip="删除选中标签"
+                      Content="×" FontSize="16" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding MoveTagUpCommand}"
+                      ToolTip.Tip="上移"
+                      Content="↑" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding MoveTagDownCommand}"
+                      ToolTip.Tip="下移"
+                      Content="↓" />
+              <Separator Margin="2,4" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding SaveCommand}"
+                      ToolTip.Tip="保存"
+                      Content="S" FontWeight="SemiBold" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding RunOnnxOnCurrentCommand}"
+                      ToolTip.Tip="ONNX 打标当前图"
+                      Content="AI" FontSize="11" FontWeight="SemiBold" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding RunLlmOnCurrentCommand}"
+                      ToolTip.Tip="LLM 视觉打标当前图（需在设置中配置）"
+                      Content="L" FontWeight="SemiBold" />
+              <Button Width="34" Height="30" Padding="0"
+                      Command="{Binding OpenWikiCommand}"
+                      ToolTip.Tip="Danbooru Wiki（当前/全局选中标签）"
+                      Content="W" FontWeight="SemiBold" />
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- RIGHT: tabs + side tools on all-tags -->
+      <Border Grid.Column="2" Margin="4,0,0,0" Background="#1e1e1e"
+              BorderBrush="#3f3f46" BorderThickness="1" CornerRadius="2">
+        <TabControl Padding="0" Background="Transparent">
+          <TabItem Header="全部标签">
+            <Grid ColumnDefinitions="*,44" Margin="0">
+              <DockPanel Margin="6,6,4,6">
+                <TextBox DockPanel.Dock="Top" Margin="0,0,0,8"
+                         Watermark="过滤全部标签（英文 / 中文）"
+                         Text="{Binding GlobalTagFilter}" MinHeight="28" />
+                <DataGrid ItemsSource="{Binding FilteredGlobalTags}"
+                          SelectedItem="{Binding SelectedGlobalTag}"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          CanUserResizeColumns="True"
+                          CanUserSortColumns="True"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          BorderThickness="0"
+                          SelectionMode="Single"
+                          Background="Transparent"
+                          RowHeight="28"
+                          ColumnHeaderHeight="32">
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="标签" Binding="{Binding Tag}" Width="2*" MinWidth="70" />
+                    <DataGridTextColumn Header="中文" Binding="{Binding Chinese}" Width="*" MinWidth="56" />
+                    <!-- Wider fixed count column so header "计数" + sort glyph fit -->
+                    <DataGridTextColumn Header=" 计数 "
+                                        Binding="{Binding Count}"
+                                        Width="80"
+                                        MinWidth="80" />
+                  </DataGrid.Columns>
+                </DataGrid>
+              </DockPanel>
+
+              <!-- Vertical rail like original right strip -->
+              <Border Grid.Column="1" Background="#2d2d30" BorderBrush="#3f3f46" BorderThickness="1,0,0,0">
+                <StackPanel Margin="4,8" Spacing="6" HorizontalAlignment="Center">
+                  <Button Width="34" Height="30" Padding="0"
+                          Command="{Binding AddGlobalTagToCurrentCommand}"
+                          ToolTip.Tip="将选中的全部标签添加到当前图"
+                          Content="+" FontSize="16" FontWeight="Bold" />
+                  <Button Width="34" Height="30" Padding="0"
+                          Command="{Binding RunOnnxOnAllCommand}"
+                          ToolTip.Tip="ONNX 打标全部"
+                          Content="AI" FontSize="11" FontWeight="SemiBold" />
+                  <Button Width="34" Height="30" Padding="0"
+                          Command="{Binding SaveCommand}"
+                          ToolTip.Tip="保存"
+                          Content="S" FontWeight="SemiBold" />
+                </StackPanel>
+              </Border>
+            </Grid>
+          </TabItem>
+
+          <TabItem Header="预览">
+            <DockPanel Margin="6">
+              <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" Spacing="2">
+                <TextBlock Text="{Binding SelectedImage.Name, FallbackValue=''}"
+                           FontWeight="SemiBold" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SelectedImage.Path, FallbackValue=''}"
+                           FontSize="11" Opacity="0.65" TextWrapping="Wrap" />
+              </StackPanel>
+              <Border Background="#111" CornerRadius="3" ClipToBounds="True"
+                      BorderBrush="#3f3f46" BorderThickness="1" MinHeight="240">
+                <Image Source="{Binding PreviewImage}" Stretch="Uniform" />
+              </Border>
+            </DockPanel>
+          </TabItem>
+
+          <TabItem Header="ONNX">
+            <ScrollViewer Margin="8" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel Spacing="10" MaxWidth="420">
+                <TextBlock FontWeight="SemiBold" FontSize="14" Text="ONNX 自动打标" />
+                <TextBlock Opacity="0.7" TextWrapping="Wrap" FontSize="12"
+                           Text="模型目录：~/.local/share/bdtm/Models/&lt;org&gt;/&lt;repo&gt;/" />
+
+                <TextBlock Opacity="0.8" Text="引擎" />
+                <ComboBox SelectedIndex="{Binding OnnxEngineIndex}" HorizontalAlignment="Stretch">
+                  <ComboBoxItem Content="WD14" />
+                  <ComboBoxItem Content="PixAI v0.9" />
+                </ComboBox>
+
+                <TextBlock Opacity="0.8" Text="模型 repo" />
+                <TextBox Text="{Binding OnnxModelRepo}"
+                         Watermark="WD14 repo；PixAI 固定 deepghs/pixai-tagger-v0.9-onnx" />
+
+                <Grid ColumnDefinitions="*,12,*">
+                  <StackPanel>
+                    <TextBlock Opacity="0.8" Text="General 阈值" />
+                    <NumericUpDown Minimum="0" Maximum="1" Increment="0.01"
+                                   Value="{Binding GeneralThreshold}" FormatString="0.00" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2">
+                    <TextBlock Opacity="0.8" Text="Character 阈值" />
+                    <NumericUpDown Minimum="0" Maximum="1" Increment="0.01"
+                                   Value="{Binding CharacterThreshold}" FormatString="0.00" />
+                  </StackPanel>
+                </Grid>
+
+                <TextBlock Opacity="0.8" Text="写入模式" />
+                <ComboBox SelectedItem="{Binding WriteMode}" HorizontalAlignment="Stretch">
+                  <onnx:TagWriteMode>AppendNew</onnx:TagWriteMode>
+                  <onnx:TagWriteMode>ReplaceAll</onnx:TagWriteMode>
+                </ComboBox>
+
+                <TextBlock Text="{Binding ProviderText}" TextWrapping="Wrap" />
+                <CheckBox Content="打标前预览确认（单图/仅选一张）"
+                          IsChecked="{Binding ConfirmOnnxBeforeWrite, Mode=TwoWay}"
+                          ToolTip.Tip="关闭后「ONNX 当前」将直接写入；批量仍直接写入" />
+
+                <TextBlock Opacity="0.8" Text="下载源" />
+                <ComboBox HorizontalAlignment="Stretch"
+                          SelectedIndex="{Binding DownloadSourceIndex}">
+                  <ComboBoxItem Content="hf-mirror.com" Tag="HfMirror" />
+                  <ComboBoxItem Content="huggingface.co" Tag="HuggingFace" />
+                </ComboBox>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="下载模型" Command="{Binding DownloadOnnxModelCommand}" />
+                  <Button Content="取消下载" Command="{Binding CancelDownloadCommand}"
+                          IsVisible="{Binding IsDownloading}" />
+                </StackPanel>
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding DownloadProgress}"
+                             Height="10" IsVisible="{Binding IsDownloading}" />
+                <TextBlock Text="{Binding DownloadStatus}" Opacity="0.85" TextWrapping="Wrap"
+                           IsVisible="{Binding IsDownloading}" />
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="打标当前" Command="{Binding RunOnnxOnCurrentCommand}" />
+                  <Button Content="打标选中" Command="{Binding RunOnnxOnSelectedCommand}" />
+                  <Button Content="打标全部" Command="{Binding RunOnnxOnAllCommand}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="取消批量" Command="{Binding CancelBatchCommand}"
+                          IsVisible="{Binding IsBatchRunning}" />
+                  <Button Content="刷新状态" Command="{Binding RefreshOnnxStatusUiCommand}" />
+                  <Button Content="保存设置" Command="{Binding SaveSettingsCommand}" />
+                </StackPanel>
+
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding BatchProgress}"
+                             Height="10" IsVisible="{Binding IsBatchRunning}" />
+                <TextBlock Text="{Binding BatchStatus}" Opacity="0.8" TextWrapping="Wrap"
+                           IsVisible="{Binding IsBatchRunning}" />
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+        </TabControl>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

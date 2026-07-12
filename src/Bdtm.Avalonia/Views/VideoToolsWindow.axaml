@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Bdtm.Avalonia.ViewModels"
+        x:Class="Bdtm.Avalonia.Views.VideoToolsWindow"
+        x:DataType="vm:VideoToolsViewModel"
+        Width="720" Height="620"
+        MinWidth="560" MinHeight="480"
+        Title="视频工具 (FFmpeg)"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="14">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <Button Content="关闭" Click="Close_Click" MinWidth="88" />
+    </StackPanel>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Spacing="10">
+        <TextBlock FontWeight="SemiBold" FontSize="15" Text="视频抽帧 / 信息" />
+        <TextBlock Text="{Binding FfmpegStatus}" Opacity="0.8" TextWrapping="Wrap" FontSize="12" />
+
+        <TextBlock Opacity="0.8" Text="输入视频" />
+        <Grid ColumnDefinitions="*,8,Auto">
+          <TextBox Text="{Binding VideoPath}" />
+          <Button Grid.Column="2" Content="浏览…" Command="{Binding BrowseVideoCommand}" />
+        </Grid>
+
+        <TextBlock Opacity="0.8" Text="输出目录" />
+        <Grid ColumnDefinitions="*,8,Auto">
+          <TextBox Text="{Binding OutputDirectory}" />
+          <Button Grid.Column="2" Content="浏览…" Command="{Binding BrowseOutputCommand}" />
+        </Grid>
+
+        <Grid ColumnDefinitions="*,12,*">
+          <StackPanel>
+            <TextBlock Opacity="0.8" Text="模式" />
+            <ComboBox ItemsSource="{Binding ExtractModes}" SelectedItem="{Binding SelectedExtractMode}" />
+          </StackPanel>
+          <StackPanel Grid.Column="2">
+            <TextBlock Opacity="0.8" Text="图片格式" />
+            <ComboBox ItemsSource="{Binding ImageFormats}" SelectedItem="{Binding SelectedImageFormat}" />
+          </StackPanel>
+        </Grid>
+
+        <TextBlock Opacity="0.8" Text="抽帧 FPS（按 FPS 模式）" />
+        <NumericUpDown Minimum="0.1" Maximum="120" Increment="0.5" Value="{Binding ExtractFps}" FormatString="0.##" />
+
+        <TextBlock Opacity="0.8" Text="视频信息" />
+        <TextBox Text="{Binding VideoInfoText}" IsReadOnly="True" AcceptsReturn="True" MinHeight="56" TextWrapping="Wrap" />
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="读取信息" Command="{Binding LoadInfoCommand}" />
+          <Button Content="开始抽帧" Command="{Binding ExtractCommand}" />
+          <Button Content="取消" Command="{Binding CancelCommand}" />
+          <Button Content="打开输出目录" Command="{Binding OpenOutputFolderCommand}" />
+          <Button Content="加载为数据集" Command="{Binding LoadOutputAsDatasetCommand}"
+                  ToolTip.Tip="用主窗口打开抽帧输出目录（关闭本对话框后生效）" />
+        </StackPanel>
+
+        <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" />
+
+        <TextBlock Opacity="0.8" Text="日志" />
+        <ListBox ItemsSource="{Binding LogLines}" MinHeight="140" MaxHeight="200" />
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

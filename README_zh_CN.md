@@ -179,3 +179,55 @@ dotnet publish BooruDatasetTagManager\BooruDatasetTagManager.csproj -c Release -
 - `quick_build.bat` — 本地快速打包至 `dist/`（产物不入库；首次构建会自动下载 FFmpeg）
 
 本地运行后，程序目录下会生成 **Models/**（下载的 ONNX 模型）、**Cache/**（如视频缩略图缓存）、**settings.json**（API 与偏好设置）。这些均为本地运行时数据，**不会也不应提交到 Git**；ONNX 模型请在应用内下载。
+
+## Linux 原生版（Avalonia）
+
+跨平台移植在分支 [`feature/avalonia-linux-mvp`](https://github.com/buxinzi2233/BooruDatasetTagManager-linuxPlus/tree/feature/avalonia-linux-mvp)，PR：[#1](https://github.com/buxinzi2233/BooruDatasetTagManager-linuxPlus/pull/1)。
+
+| 组件 | 路径 |
+|------|------|
+| 领域库 | `src/Bdtm.Core` |
+| ONNX | `src/Bdtm.Onnx`（CUDA 优先，CPU 回退） |
+| UI | `src/Bdtm.Avalonia`（Avalonia 11） |
+
+### 依赖
+
+- .NET 8 SDK（构建）  
+- 运行：自包含发布可不再装运行时  
+- **CUDA 打标**：NVIDIA 驱动 + CUDA 12 用户态库（脚本会尝试注入本机 pip `nvidia/*/lib`）  
+- **视频工具**：系统 `ffmpeg` / `ffprobe`（可选）  
+
+### 构建 / 测试 / 发布
+
+```bash
+git checkout feature/avalonia-linux-mvp
+./scripts/build-linux.sh          # Core + Onnx 测试 + Avalonia 构建
+./scripts/publish-linux.sh        # 输出 dist/linux-x64
+./scripts/run-linux.sh            # 推荐启动（CUDA 库 + 用户 Models）
+```
+
+### 配置与模型目录（XDG）
+
+| 用途 | 默认路径 |
+|------|----------|
+| 设置 | `~/.config/bdtm/settings.json` |
+| ONNX 模型 | `~/.local/share/bdtm/Models/<org>/<repo>/` |
+
+应用内 **ONNX** 页可「下载模型」（HuggingFace 或 **hf-mirror**）。也可手动放置：
+
+```text
+~/.local/share/bdtm/Models/SmilingWolf/wd-eva02-large-tagger-v3/model.onnx
+~/.local/share/bdtm/Models/SmilingWolf/wd-eva02-large-tagger-v3/selected_tags.csv
+```
+
+环境变量：`BDTM_MODELS_DIR`、`BDTM_CUDA_LIB_DIRS`（见 `scripts/run-linux.sh`）。
+
+### 功能范围（Linux 当前）
+
+- 数据集打开/缩略图、标签编辑（中文列、权重、排序、过滤）  
+- WD14 批量 ONNX（当前/多选/全部）  
+- 设置页、Danbooru Wiki（联网）、视频抽帧并加载为数据集  
+
+未移植：LLM/TAG2NL、角色审计、裁剪抠图、完整视频时间轴等（见 `docs/porting/ROADMAP_REMAINING.md`）。
+
+> 原 WinForms 工程仍保留在仓库中，面向 Windows。

@@ -1,0 +1,102 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Bdtm.Avalonia.ViewModels"
+        x:Class="Bdtm.Avalonia.Views.OnnxPreviewWindow"
+        x:DataType="vm:OnnxPreviewViewModel"
+        Width="800" Height="720"
+        MinWidth="640" MinHeight="500"
+        Title="ONNX 打标预览"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        ShowInTaskbar="False"
+        Topmost="True">
+  <DockPanel Margin="16">
+    <Border DockPanel.Dock="Bottom"
+            Margin="0,12,0,0"
+            Padding="0,12,0,0"
+            BorderBrush="#3f3f46"
+            BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding SelectedCountText}"
+                   VerticalAlignment="Center"
+                   Opacity="0.85"
+                   Margin="0,0,16,0" />
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+          <Button Content="全选" Command="{Binding SelectAllCommand}" MinWidth="76" Padding="14,7" />
+          <Button Content="全不选" Command="{Binding SelectNoneCommand}" MinWidth="76" Padding="14,7" />
+          <Button Content="应用选中" Click="Apply_Click" MinWidth="104" Padding="16,7" FontWeight="SemiBold" />
+          <Button Content="取消" Click="Cancel_Click" MinWidth="84" Padding="14,7" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,12">
+      <TextBlock FontSize="16" FontWeight="SemiBold"
+                 Text="{Binding ImageName}"
+                 TextTrimming="CharacterEllipsis"
+                 ToolTip.Tip="{Binding ImageName}" />
+      <TextBlock Opacity="0.85" Text="{Binding Summary}" TextWrapping="Wrap" />
+      <TextBlock Opacity="0.85" Text="{Binding WriteModeText, StringFormat=写入模式: {0}}" />
+      <TextBlock Opacity="0.65" FontSize="12" TextWrapping="Wrap"
+                 Text="「选用」列勾选 = 写入该标签；点「应用选中」确认。取消则不写入。多图批量仍直接写入。" />
+    </StackPanel>
+
+    <DataGrid ItemsSource="{Binding Tags}"
+              AutoGenerateColumns="False"
+              IsReadOnly="False"
+              CanUserResizeColumns="True"
+              CanUserSortColumns="False"
+              GridLinesVisibility="Horizontal"
+              HeadersVisibility="Column"
+              SelectionMode="Single"
+              RowHeight="32"
+              ColumnHeaderHeight="40"
+              BorderThickness="1"
+              BorderBrush="#3f3f46">
+      <DataGrid.Columns>
+        <!--
+          Plain Header="写入" is clipped by DataGrid header chrome (~sort padding).
+          Use a custom header control with fixed width so both glyphs always fit.
+        -->
+        <!-- Wider first column so header 「选用」 fits completely (grow right into tag column). -->
+        <DataGridTemplateColumn Width="88" MinWidth="88" MaxWidth="120" CanUserResize="True">
+          <DataGridTemplateColumn.Header>
+            <TextBlock Text="选用"
+                       MinWidth="80"
+                       Margin="8,0,8,0"
+                       TextAlignment="Center"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Center"
+                       FontWeight="SemiBold"
+                       ToolTip.Tip="勾选后写入该标签" />
+          </DataGridTemplateColumn.Header>
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate x:DataType="vm:PreviewTagRow">
+              <CheckBox HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                        ToolTip.Tip="选用：写入该标签"
+                        Margin="8,0" />
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+
+        <DataGridTextColumn Header="标签"
+                            Binding="{Binding Tag}"
+                            Width="2.4*"
+                            MinWidth="160"
+                            IsReadOnly="True" />
+        <DataGridTextColumn Header="中文"
+                            Binding="{Binding Chinese}"
+                            Width="*"
+                            MinWidth="100"
+                            IsReadOnly="True" />
+        <DataGridTextColumn Header="置信度"
+                            Binding="{Binding ConfidenceText}"
+                            Width="100"
+                            MinWidth="100"
+                            IsReadOnly="True" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</Window>

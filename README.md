@@ -150,3 +150,18 @@ dotnet publish BooruDatasetTagManager\BooruDatasetTagManager.csproj -c Release -
 Running locally creates **Models/** (downloaded ONNX weights), **Cache/** (e.g. video thumbnails), and **settings.json** (API keys and preferences) beside the executable. These are runtime-only and must not be committed; ONNX models are downloaded from inside the app.
 
 Images sent for tagging, TAG2NL, or audit go to your configured endpoint. API settings live in local `settings.json`.
+
+## Linux native (Avalonia)
+
+Branch [`feature/avalonia-linux-mvp`](https://github.com/buxinzi2233/BooruDatasetTagManager-linuxPlus/tree/feature/avalonia-linux-mvp) · [PR #1](https://github.com/buxinzi2233/BooruDatasetTagManager-linuxPlus/pull/1).
+
+```bash
+./scripts/build-linux.sh
+./scripts/publish-linux.sh
+./scripts/run-linux.sh   # preferred (CUDA libs + ~/.local/share/bdtm/Models)
+```
+
+- Settings: `~/.config/bdtm/settings.json`
+- Models: download in-app (ONNX tab) or place under `~/.local/share/bdtm/Models/<org>/<repo>/`
+- Roadmap: `docs/porting/ROADMAP_REMAINING.md`
+- Full Chinese guide: `README_zh_CN.md` → **Linux 原生版**

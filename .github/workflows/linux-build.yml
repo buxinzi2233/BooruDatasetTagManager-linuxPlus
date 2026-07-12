@@ -1,0 +1,21 @@
+name: linux-build
+
+on:
+  push:
+    branches: [ feature/avalonia-linux-mvp, main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Build and test (Core + Onnx + Avalonia)
+        run: |
+          chmod +x scripts/build-linux.sh
+          ./scripts/build-linux.sh
